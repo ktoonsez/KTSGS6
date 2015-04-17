@@ -1737,8 +1737,13 @@ static int hub_probe(struct usb_interface *intf, const struct usb_device_id *id)
 	} else {			/* root hub */
 		const struct hc_driver *drv = bus_to_hcd(hdev->bus)->driver;
 
+#if defined(CONFIG_MDM_HSIC_PM)
+		if (drv->bus_suspend && drv->bus_resume && strcmp(dev_name(&hdev->dev), "usb1"))
+			usb_enable_autosuspend(hdev);
+#else
 		if (drv->bus_suspend && drv->bus_resume)
 			usb_enable_autosuspend(hdev);
+#endif
 	}
 
 	if (hdev->level == MAX_TOPO_LEVEL) {

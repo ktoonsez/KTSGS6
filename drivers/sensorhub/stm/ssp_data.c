@@ -234,7 +234,9 @@ int parse_dataframe(struct ssp_data *data, char *dataframe, int frame_len)
 		case MSG2AP_INST_GYRO_CAL:
 			ssp_infof("Gyro caldata received from MCU");
 			memcpy(caldata, dataframe + index, sizeof(caldata));
+			wake_lock(&data->ssp_wake_lock);
 			save_gyro_caldata(data, caldata);
+			wake_unlock(&data->ssp_wake_lock);
 			index += sizeof(caldata);
 			break;
 		case MSG2AP_INST_DUMP_DATA:

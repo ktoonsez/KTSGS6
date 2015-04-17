@@ -276,6 +276,9 @@ void TransportLayer_dtor(struct sTransportLayer* p)
         bbd_free(pToRemove->pucData);
         bbd_free(pToRemove);
     }
+
+    p->m_bOngoingSync = false;  // BBD is closing. We need to prevent TransportLayer_Tick from adding next tick
+
     /* for now assert, but we should release the memory instead */
     ASSERT(TransportLayer_GetReliableUsage(p) == 0);
 }

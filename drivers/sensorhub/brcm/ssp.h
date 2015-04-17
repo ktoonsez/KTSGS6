@@ -45,6 +45,11 @@
 #include "ssp_sensorhub.h"
 #endif
 
+#if defined(CONFIG_MUIC_NOTIFIER)
+#include <linux/muic/muic.h>
+#include <linux/muic/muic_notifier.h>
+#endif
+
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #undef CONFIG_HAS_EARLYSUSPEND
 #endif
@@ -400,6 +405,7 @@ struct grip_calibration_data {
 	bool calibrated;
 	bool mode_set;
 	int temp;
+	int temp_cal;
 	char slope;
 };
 
@@ -538,6 +544,9 @@ struct ssp_data {
 	struct miscdevice batch_io_device;
 /*snamy.jeong@samsung.com temporary code for voice data sending to mcu*/
 	struct device *voice_device;
+#if defined(CONFIG_MUIC_NOTIFIER)
+	struct notifier_block cpuidle_muic_nb;
+#endif
 
 	bool bSspShutdown;
 	bool bAccelAlert;
@@ -552,6 +561,9 @@ struct ssp_data {
 	bool bTimeSyncing;
 	bool bHandlingIrq;
 	bool grip_off;
+#if defined(CONFIG_MUIC_NOTIFIER)
+	bool jig_is_attached;
+#endif
 
 	unsigned int uProxCanc;
 	unsigned int uCrosstalk;

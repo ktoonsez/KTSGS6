@@ -129,7 +129,7 @@ struct dev_settings_t {
 	u16 band;
 	u32 bottom_of_band;
 	u16 channel_spacing;
-	u32 timeout_RDS;      /****For storing the jiffy value****/
+	unsigned long timeout_RDS;      /****For storing the jiffy value****/
 	u32 seek_preset[NUM_SEEK_PRESETS];
 	u8 curr_snr;
 	u8 curr_rssi_th;

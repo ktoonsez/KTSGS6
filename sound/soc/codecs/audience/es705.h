@@ -595,10 +595,10 @@ struct es705_priv {
 	u16 preset;
 
 	long internal_route_num;
-	long internal_rate;
-	unsigned int rx1_route_enable;
-	unsigned int tx1_route_enable;
-	unsigned int rx2_route_enable;
+	ssize_t internal_rate;
+	size_t rx1_route_enable;
+	size_t tx1_route_enable;
+	size_t rx2_route_enable;
 
 	unsigned int ap_tx1_ch_cnt;
 

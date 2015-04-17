@@ -52,7 +52,7 @@ typedef struct _tuner_sts_data {
 	__u32	moni_cnt;
 } TUNER_STS_DATA;
 
-#define IOCTL_MAXNR                     28
+#define IOCTL_MAXNR                     29
 
 #define IOCTL_ISDBT_RESET	\
 	_IO(IOCTL_MAGIC, 0)
@@ -121,6 +121,9 @@ typedef struct _tuner_sts_data {
 
 #define IOCTL_ISDBT_TUNER_PKT_MODE	\
 	_IOW(IOCTL_MAGIC, 27, struct ioctl_info)
+
+#define IOCTL_ISDBT_RF_BER	\
+	_IOW(IOCTL_MAGIC, 28, struct ioctl_info)
 
 struct ISDBT_OPEN_INFO_T {
 	HANDLE				*hInit;

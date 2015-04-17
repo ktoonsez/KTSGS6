@@ -26,6 +26,9 @@
 #include <linux/mdm_hsic_pm.h>
 static const char rmnet_pm_dev[] = "15510000.mdmpm_pdata";
 #endif
+#ifdef CONFIG_SEC_DEBUG_MDM_SEPERATE_CRASH
+#include <linux/sec_debug.h>
+#endif
 
 #define MDM_PBLRDY_CNT			20
 #define INVALID_GPIO			(-1)
@@ -48,6 +51,8 @@ extern unsigned int lpcharge;
 
 /* qcom,ap2mdm-hostrdy-gpio */
 extern int pmdata_gpio_host_ready;
+
+extern int exynos_pcie_dump_link_down_status(int ch_num);
 
 int exynos_pcie_disable_irq(int ch_num);
 
@@ -150,7 +155,7 @@ static const int required_gpios[] = {
 	AP2MDM_SOFT_RESET
 };
 
-struct mdm_ctrl *g_mdm;
+struct mdm_ctrl *g_mdm = NULL;
 
 static void mdm_debug_gpio_show(struct mdm_ctrl *mdm)
 {
@@ -358,6 +363,12 @@ static void mdm_power_down(struct mdm_ctrl *mdm)
 void set_ap2mdm_errfatal(void)
 {
 	pr_info("[MIF] AP2MDM_ERRFATAL high!!\n");
+	if(!g_mdm) {
+		pr_err("[MIF] %s, esoc driver is not initialized\n", __func__);
+		return;
+	}
+
+
 	gpio_set_value(MDM_GPIO(g_mdm, AP2MDM_ERRFATAL), 1);
 	gpio_set_value(MDM_GPIO(g_mdm, AP2MDM_VDDMIN), 1);
 }
@@ -473,6 +484,8 @@ static int mdm_cmd_exe(enum esoc_cmd cmd, struct esoc_clink *esoc)
 	      mdm->cp_crash_occurrence= false;
 	      return temp_for_reason;
 	      }
+	case ESOC_GET_RESTART_REASON:
+	      return mdm->get_restart_reason;
 	default:
 	      return -EINVAL;
 	};
@@ -658,6 +671,8 @@ static irqreturn_t mdm_errfatal(int irq, void *dev_id)
 	dev_err(dev, "%s: mdm sent errfatal interrupt\n",
 					 __func__);
 	dev_err(dev, "%s: ep0_timeout: %d\n", __func__, ep0_timeout_cnt);
+	exynos_pcie_dump_link_down_status(0);
+
 	/* disable irq ?*/
 	esoc_clink_evt_notify(ESOC_ERR_FATAL, esoc);
 	mdm_fatal_debug_gpio_show(mdm);
@@ -731,6 +746,11 @@ static int mdm_get_status(u32 *status, struct esoc_clink *esoc)
 
 int mdm_get_fatal_status(void)
 {
+	if(!g_mdm) {
+		pr_err("[MIF] %s, esoc driver is not initialized\n", __func__);
+		return 1;
+	}
+
 	if(gpio_get_value(MDM_GPIO(g_mdm, MDM2AP_ERRFATAL)))
 		return 1;
 
@@ -872,6 +892,10 @@ static int mdm_configure_ipc(struct mdm_ctrl *mdm, struct platform_device *pdev)
 	gpio_direction_output(MDM_GPIO(mdm, AP2MDM_STATUS), 0);
 	gpio_direction_output(MDM_GPIO(mdm, AP2MDM_ERRFATAL), 0);
 	gpio_direction_output(MDM_GPIO(mdm, AP2MDM_VDDMIN), 0);
+#ifdef CONFIG_SEC_DEBUG_MDM_SEPERATE_CRASH
+	if (!sec_debug_is_enabled_for_ssr())
+		gpio_direction_output(MDM_GPIO(mdm, AP2MDM_SOFT_RESET), 0);
+#endif
 
 	if (gpio_is_valid(MDM_GPIO(mdm, AP2MDM_CHNLRDY)))
 		gpio_direction_output(MDM_GPIO(mdm, AP2MDM_CHNLRDY), 0);

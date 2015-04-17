@@ -33,6 +33,9 @@
 #include <linux/slab.h>
 #include <linux/gpio.h>
 #include <linux/io.h>
+#ifdef SEC_ENABLE_13SEG_BOOST
+#include <linux/pm_qos.h>
+#endif
 
 #include <linux/gpio.h>
 #include <linux/platform_device.h>
@@ -72,6 +75,11 @@ static struct isdbt_platform_data *isdbt_pdata;
 #define ISDBT_LDO_OFF     0
 
 u8 static_ringbuffer[RING_BUFFER_SIZE];
+
+#ifdef SEC_ENABLE_13SEG_BOOST
+#define FULLSEG_MIN_FREQ	1296000
+static struct pm_qos_request fc8300_cpu_handle;
+#endif
 
 #ifdef TS_DROP_DEBUG
 #define FEATURE_TS_CHECK
@@ -697,6 +705,13 @@ int isdbt_release(struct inode *inode, struct file *filp)
 
 	pr_err("isdbt_release\n");
 
+#ifdef SEC_ENABLE_13SEG_BOOST
+	if (pm_qos_request_active(&fc8300_cpu_handle)) {
+		pr_info("[FC8300] disable boost!!!\n");
+		pm_qos_remove_request(&fc8300_cpu_handle);
+	}
+#endif
+
 	if	(open_cnt <= 0)	{
 		pr_err("tuner_module_entry_close: close error\n");
 		open_cnt = 0;
@@ -746,6 +761,36 @@ void isdbt_isr_check(HANDLE hDevice)
 
 }
 #endif
+
+static ssize_t isdbt_ber_show(struct class *dev,
+                struct class_attribute *attr, char *buf)
+{
+	int type, BER;
+
+	switch(isdbt_pdata->type) {
+		case ISDBTMM_13SEG:
+			type = 2;
+			BER = isdbt_pdata->BER[1];
+			break;
+		case ISDBT_13SEG:
+			type = 1;
+			BER = isdbt_pdata->BER[1];
+			break;
+		default:	// 1-seg
+			type = 0;
+			BER = isdbt_pdata->BER[0];
+			break;
+	}
+
+	sprintf(buf, "%d,%d", type, BER);
+	pr_info("%s, type:%d, BER_A:%d, BER_B:%d\n", __func__, type,
+		isdbt_pdata->BER[0], isdbt_pdata->BER[1]);
+
+	return strlen(buf);
+}
+
+static CLASS_ATTR(ber, 0444,
+                isdbt_ber_show, NULL);
 
 long isdbt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
@@ -884,6 +929,10 @@ long isdbt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			, DIV_BROADCAST, (u32)info.buff[0], (u32)info.buff[1]);
 
 		if (((u32)info.buff[1] == ISDBTMM_13SEG) || ((u32)info.buff[1] == ISDBT_13SEG)) {
+#ifdef SEC_ENABLE_13SEG_BOOST
+			pr_info("[FC8300] enable boost!\n");
+			pm_qos_add_request(&fc8300_cpu_handle, PM_QOS_CLUSTER0_FREQ_MIN, FULLSEG_MIN_FREQ);
+#endif
 			bbm_com_word_write(hInit, DIV_BROADCAST, BBM_BUF_TS0_START, 0);
 			bbm_com_word_write(hInit, DIV_BROADCAST, BBM_BUF_TS0_END
 					, TS0_32PKT_LENGTH - 1);
@@ -892,6 +941,12 @@ long isdbt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			   print_log(hInit, "[FC8300] TUNER THRESHOLD: %d\n"
 			   , TS0_32PKT_LENGTH / 2 - 1);
 		}	else	{
+#ifdef SEC_ENABLE_13SEG_BOOST
+			if (pm_qos_request_active(&fc8300_cpu_handle)) {
+				pr_info("[FC8300] 1seg don't need boost. remove!!\n");
+				pm_qos_remove_request(&fc8300_cpu_handle);
+			}
+#endif
 			bbm_com_word_write(hInit, DIV_BROADCAST, BBM_BUF_TS0_START, 0);
 			bbm_com_word_write(hInit, DIV_BROADCAST, BBM_BUF_TS0_END
 				, TS0_5PKT_LENGTH - 1);
@@ -901,8 +956,18 @@ long isdbt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			, TS0_5PKT_LENGTH / 2 - 1);
 		}
 
+		isdbt_pdata->type = (u32)info.buff[1];
+
 		print_log(hInit, "[FC8300] IOCTL_ISDBT_TUNER_SELECT %d\n"
 		, (u32)info.buff[1]);
+		break;
+	case IOCTL_ISDBT_RF_BER:
+		err = copy_from_user((void *)&info, (void *)arg, size);
+		pr_err("[FC8300] IOCTL_ISDBT_RF_BER, CN(%d), BER_A(%d), BER_B(%d)\n",
+			(u8)info.buff[0], (u32)info.buff[1], (u32)info.buff[2]);
+		isdbt_pdata->BER[0] = (int)info.buff[1];
+		isdbt_pdata->BER[1] = (int)info.buff[2];
+		res = 0;
 		break;
 	case IOCTL_ISDBT_TS_START:
 		pr_err("[FC8300] IOCTL_ISDBT_TS_START\n");
@@ -919,6 +984,12 @@ long isdbt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		pr_err("[FC8300] IOCTL_ISDBT_TS_STOP\n");
 		hOpen->isdbttype = 0;
 
+#ifdef SEC_ENABLE_13SEG_BOOST
+		if (pm_qos_request_active(&fc8300_cpu_handle)) {
+			pr_info("[FC8300] disable boost!\n");
+			pm_qos_remove_request(&fc8300_cpu_handle);
+		}
+#endif
 		break;
 	case IOCTL_ISDBT_POWER_ON:
 		pr_err("[FC8300] IOCTL_ISDBT_POWER_ON\n");
@@ -936,6 +1007,12 @@ long isdbt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		break;
 	case IOCTL_ISDBT_POWER_OFF:
 		pr_err("[FC8300] IOCTL_ISDBT_POWER_OFF\n");
+#ifdef SEC_ENABLE_13SEG_BOOST
+		if (pm_qos_request_active(&fc8300_cpu_handle)) {
+			pr_info("[FC8300] disable boost!!\n");
+			pm_qos_remove_request(&fc8300_cpu_handle);
+		}
+#endif
 		isdbt_hw_deinit();
 
 		break;
@@ -1223,6 +1300,8 @@ err:
 static int isdbt_probe(struct platform_device *pdev)
 {
 	int res = 0;
+	static struct class *isdbt_class;
+
 	pr_err("%s\n", __func__);
 
 	open_cnt         = 0;
@@ -1277,10 +1356,17 @@ static int isdbt_probe(struct platform_device *pdev)
 #endif
 
 	INIT_LIST_HEAD(&(hInit->hHead));
+
+	isdbt_class = class_create(THIS_MODULE, "isdbt");
+	if (IS_ERR(isdbt_class)) {
+		pr_err("%s : class_create failed!\n", __func__);
+	} else {
+		res = class_create_file(isdbt_class, &class_attr_ber);
+		if (res)
+		pr_err("%s : failed to create device file in sysfs entries!\n", __func__);
+	}
+
 	return 0;
-
-
-
 }
 static int isdbt_remove(struct platform_device *pdev)
 {

@@ -329,6 +329,7 @@ MHI_STATUS process_M0_transition(mhi_device_ctxt *mhi_dev_ctxt,
 			"Could not set bus frequency ret: %d\n",
 			ret_val);
 	mhi_dev_ctxt->flags.pending_M0 = 0;
+	atomic_set(&mhi_dev_ctxt->flags.cp_m1_state, 0);
 	wake_up_interruptible(mhi_dev_ctxt->M0_event);
 	ret_val = hrtimer_start(&mhi_dev_ctxt->m1_timer,
 				mhi_dev_ctxt->m1_timeout,
@@ -454,6 +455,7 @@ MHI_STATUS process_M1_transition(mhi_device_ctxt  *mhi_dev_ctxt,
 	}
 	write_lock_irqsave(&mhi_dev_ctxt->xfer_lock, flags);
 	if (!mhi_dev_ctxt->flags.pending_M3) {
+		atomic_set(&mhi_dev_ctxt->flags.cp_m1_state, 0);
 		mhi_dev_ctxt->mhi_state = MHI_STATE_M2;
 		mhi_log(MHI_MSG_INFO, "Allowing transition to M2\n");
 		mhi_reg_write_field(mhi_dev_ctxt->mmio_addr, MHICTRL,
@@ -461,6 +463,9 @@ MHI_STATUS process_M1_transition(mhi_device_ctxt  *mhi_dev_ctxt,
 			MHICTRL_MHISTATE_SHIFT,
 			MHI_STATE_M2);
 		mhi_dev_ctxt->counters.m1_m2++;
+	} else {
+		mhi_log(MHI_MSG_INFO, "Skip M2 transition\n");
+		atomic_set(&mhi_dev_ctxt->flags.cp_m1_state, 1);
 	}
 	write_unlock_irqrestore(&mhi_dev_ctxt->xfer_lock, flags);
 	ret_val  = mhi_set_bus_request(mhi_dev_ctxt, 0);
@@ -1001,6 +1006,7 @@ int mhi_initiate_m3(mhi_device_ctxt *mhi_dev_ctxt)
 		goto exit;
 	}
 	mhi_dev_ctxt->flags.pending_M3 = 1;
+	atomic_set(&mhi_dev_ctxt->flags.cp_m1_state, 0);
 	mhi_set_m_state(mhi_dev_ctxt, MHI_STATE_M3);
 	write_unlock_irqrestore(&mhi_dev_ctxt->xfer_lock, flags);
 
@@ -1043,6 +1049,19 @@ exit:
 		ring_all_chan_dbs(mhi_dev_ctxt);
 		atomic_dec(&mhi_dev_ctxt->flags.data_pending);
 		r = -EAGAIN;
+
+		if(atomic_read(&mhi_dev_ctxt->flags.cp_m1_state)) {
+			write_lock_irqsave(&mhi_dev_ctxt->xfer_lock, flags);
+			atomic_set(&mhi_dev_ctxt->flags.cp_m1_state, 0);
+			mhi_dev_ctxt->mhi_state = MHI_STATE_M2;
+			mhi_log(MHI_MSG_INFO, "Allowing transition to M2\n");
+			mhi_reg_write_field(mhi_dev_ctxt->mmio_addr, MHICTRL,
+					MHICTRL_MHISTATE_MASK,
+					MHICTRL_MHISTATE_SHIFT,
+					MHI_STATE_M2);
+			mhi_dev_ctxt->counters.m1_m2++;
+			write_unlock_irqrestore(&mhi_dev_ctxt->xfer_lock, flags);
+		}
 	}
 	/* We have to be careful here, we are setting a pending_M3 to 0
 	 * even if we did not set it above. This works since the only other

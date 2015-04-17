@@ -160,6 +160,9 @@ fw-shipped-all := $(fw-shipped-y) $(fw-shipped-m) $(fw-shipped-)
 # Sensorhub
 fw-shipped-$(CONFIG_SENSORS_SSP_STM) += ssp_stm.fw ssp_crashed.fw
 
+# IrDA FPGA
+fw-shipped-$(CONFIG_SEC_FPGA_ICE40XX) += ice40xx/i2c_top_bitmap_1.fw
+
 # Directories which we _might_ need to create, so we have a rule for them.
 firmware-dirs := $(sort $(addprefix $(objtree)/$(obj)/,$(dir $(fw-external-y) $(fw-shipped-all))))
 

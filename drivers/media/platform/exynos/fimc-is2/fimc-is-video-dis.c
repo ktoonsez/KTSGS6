@@ -37,11 +37,8 @@
 #include "fimc-is-regs.h"
 #include "fimc-is-err.h"
 #include "fimc-is-video.h"
-#ifdef CONFIG_ENABLE_HAL3_2_META_INTERFACE
 #include "fimc-is-metadata.h"
-#else
-#include "fimc-is-metadata-legacy.h"
-#endif
+
 const struct v4l2_file_operations fimc_is_dis_video_fops;
 const struct v4l2_ioctl_ops fimc_is_dis_video_ioctl_ops;
 const struct vb2_ops fimc_is_dis_qops;

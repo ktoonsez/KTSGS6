@@ -51,6 +51,8 @@ struct fimc_is_device_ischain;
 #define OIS_I2C_ADDR_MASK		0xFF0000
 #define OIS_I2C_ADDR_SHIFT		16
 
+#define FIMC_IS_TIMESTAMP_HASH_KEY	10
+
 #define FIMC_IS_SENSOR_CFG(w, h, f, s, m) {	\
 	.width		= w,			\
 	.height		= h,			\
@@ -167,6 +169,8 @@ struct fimc_is_device_sensor {
 	struct camera2_flash_ctl			flash_ctl;
 	struct work_struct				control_work;
 	struct fimc_is_frame				*control_frame;
+	u64						timestamp[FIMC_IS_TIMESTAMP_HASH_KEY];
+	u64						timestampboot[FIMC_IS_TIMESTAMP_HASH_KEY];
 
 	u32						fcount;
 	u32						instant_cnt;
@@ -252,6 +256,8 @@ int fimc_is_sensor_g_module(struct fimc_is_device_sensor *device,
 int fimc_is_sensor_g_postion(struct fimc_is_device_sensor *device);
 int fimc_is_search_sensor_module(struct fimc_is_device_sensor *device,
 	u32 sensor_id, struct fimc_is_module_enum **module);
+int fimc_is_sensor_tag(struct fimc_is_device_sensor *device,
+	struct fimc_is_frame *frame);
 
 extern const struct fimc_is_queue_ops fimc_is_sensor_ops;
 

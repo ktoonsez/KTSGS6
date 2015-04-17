@@ -49,6 +49,7 @@ struct esxxx_platform_data {
 	int (*esxxx_clk_cb) (struct device *, int);
 	const char *fw_filename;
 	const char *vs_filename;
+	int use_dhwpt;
 };
 #else
 struct esxxx_platform_data {

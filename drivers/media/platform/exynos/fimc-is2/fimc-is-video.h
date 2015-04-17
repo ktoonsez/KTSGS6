@@ -6,11 +6,7 @@
 #include "fimc-is-type.h"
 #include "fimc-is-mem.h"
 #include "fimc-is-framemgr.h"
-#ifdef CONFIG_ENABLE_HAL3_2_META_INTERFACE
 #include "fimc-is-metadata.h"
-#else
-#include "fimc-is-metadata-legacy.h"
-#endif
 #include "fimc-is-config.h"
 
 /* configuration by linux kernel version */

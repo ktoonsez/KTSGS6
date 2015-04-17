@@ -134,6 +134,10 @@ static const char * const power_state_cmd[] = {
 	"vs_streaming",
 };
 
+static int dhwpt_is_enabled;
+#define SET_DHWPT_BTOD	0x9052005C
+#define RESET_DHWPT		0x90520000
+
 /* codec private data TODO: move to runtime init */
 struct es705_priv es705_priv = {
 	.pm_state = ES705_POWER_AWAKE,
@@ -179,6 +183,8 @@ const char *esxxx_mode[] = {
 	"VOICESENSE",
 };
 
+static int es705_sleep(struct es705_priv *es705);
+static int es705_wakeup(struct es705_priv *es705);
 static int abort_request;
 static int es705_vs_load(struct es705_priv *es705);
 static int es705_write_then_read(struct es705_priv *es705,
@@ -563,6 +569,74 @@ EXIT:
 	return ret;
 }
 
+static int es705_enable_dhwpt(int onoff)
+{
+	struct es705_priv *es705 = &es705_priv;
+	int rc = 0;
+
+	dev_info(es705->dev, "%s(): Entry dhwpt_is_enabled(%d) onoff(%d)\n",
+		__func__, dhwpt_is_enabled, onoff);
+
+	if (dhwpt_is_enabled != onoff) {
+		if (onoff) {
+			rc = es705_cmd(es705, SET_DHWPT_BTOD);
+			if (rc < 0) {
+				dev_err(es705->dev,
+						"%s():Failed DHWPT\n",
+						__func__);
+				dhwpt_is_enabled = 0;
+			} else {
+				dhwpt_is_enabled = 1;
+			}
+			es705_sleep(es705);
+		} else {
+			if (es705->es705_power_state
+					== ES705_SET_POWER_STATE_SLEEP)
+				es705_wakeup(es705);
+
+			rc = es705_cmd(es705, RESET_DHWPT);
+			if (rc < 0) {
+				dev_err(es705->dev,
+						"%s():Failed DHWPT off\n",
+						__func__);
+				dhwpt_is_enabled = 1;
+			} else {
+				dhwpt_is_enabled = 0;
+			}
+		}
+	}
+	dev_info(es705->dev, "%s(): Exit %s\n",	__func__,
+				dhwpt_is_enabled ? "DHWPT ON":"DHWPT OFF");
+	return rc;
+}
+
+static int es705_chk_route_id_for_dhwpt(long route_index)
+{
+	struct es705_priv *es705 = &es705_priv;
+	int rc = 0;
+
+	if (es705->pdata->use_dhwpt) {
+		switch (route_index) {
+		case ROUTE_FT_NB_NS_ON:
+		case ROUTE_CT_NB_NS_ON:
+		case ROUTE_FT_NB_NS_OFF:
+		case ROUTE_CT_NB_NS_OFF:
+		case ROUTE_FT_WB_NS_ON:
+		case ROUTE_CT_WB_NS_ON:
+		case ROUTE_FT_WB_NS_OFF:
+		case ROUTE_CT_WB_NS_OFF:
+			es705_enable_dhwpt(0);
+			break;
+
+		default:
+			es705_enable_dhwpt(1);
+			rc = 1;
+			break;
+		}
+	}
+	return rc;
+}
+
 static void es705_switch_route(long route_index)
 {
 	struct es705_priv *es705 = &es705_priv;
@@ -583,6 +657,13 @@ static void es705_switch_route(long route_index)
 	if (es705->internal_route_num == route_index) {
 		dev_info(es705->dev, "%s: same route with previous, skip!\n",
 			__func__);
+		return;
+	}
+
+	/* Check DHWPT interface */
+	if (es705_chk_route_id_for_dhwpt(route_index)) {
+		es705->internal_route_num = route_index;
+		es705->current_veq = -1;
 		return;
 	}
 
@@ -1610,6 +1691,9 @@ static ssize_t es705_route_value_set(struct device *dev,
 			cancel_delayed_work_sync(&chk_route_st_and_recfg_work);
 		}
 #endif
+		/* Check DHWPT interface */
+		if (es705->pdata->use_dhwpt && dhwpt_is_enabled)
+			es705_enable_dhwpt(0);
 
 		dev_info(es705->dev, "%s: going to sleep\n", __func__);
 		es705->internal_route_num = value;
@@ -1627,6 +1711,15 @@ static ssize_t es705_route_value_set(struct device *dev,
 
 		if (es705->pm_state == ES705_POWER_SLEEP_PENDING)
 			es705->pm_state = ES705_POWER_AWAKE;
+	}
+
+	/* Check DHWPT interface */
+	if (es705->pdata->use_dhwpt && dhwpt_is_enabled) {
+		if (es705_chk_route_id_for_dhwpt(value)) {
+			es705->internal_route_num = value;
+			es705->current_veq = -1;
+			return count;
+		}
 	}
 
 	if (es705->es705_power_state != ES705_SET_POWER_STATE_NORMAL) {
@@ -2308,7 +2401,7 @@ static int es705_put_control_value(struct snd_kcontrol *kcontrol,
 	struct soc_mixer_control *mc =
 	    (struct soc_mixer_control *)kcontrol->private_value;
 	unsigned int reg = mc->reg;
-	unsigned int value;
+	size_t value;
 	int rc = 0;
 
 	value = ucontrol->value.integer.value[0];
@@ -2853,7 +2946,7 @@ static int es705_get_rx1_route_enable_value(struct snd_kcontrol *kcontrol,
 {
 	ucontrol->value.integer.value[0] = es705_priv.rx1_route_enable;
 
-	dev_dbg(es705_priv.dev, "%s(): rx1_route_enable = %d\n",
+	dev_dbg(es705_priv.dev, "%s(): rx1_route_enable = %zu\n",
 		__func__, es705_priv.rx1_route_enable);
 
 	return 0;
@@ -2864,7 +2957,7 @@ static int es705_put_rx1_route_enable_value(struct snd_kcontrol *kcontrol,
 {
 	es705_priv.rx1_route_enable = ucontrol->value.integer.value[0];
 
-	dev_dbg(es705_priv.dev, "%s(): rx1_route_enable = %d\n",
+	dev_dbg(es705_priv.dev, "%s(): rx1_route_enable = %zu\n",
 		__func__, es705_priv.rx1_route_enable);
 
 #if defined(SAMSUNG_ES705_FEATURE)
@@ -2891,7 +2984,7 @@ static int es705_get_tx1_route_enable_value(struct snd_kcontrol *kcontrol,
 {
 	ucontrol->value.integer.value[0] = es705_priv.tx1_route_enable;
 
-	dev_dbg(es705_priv.dev, "%s(): tx1_route_enable = %d\n",
+	dev_dbg(es705_priv.dev, "%s(): tx1_route_enable = %zu\n",
 		__func__, es705_priv.tx1_route_enable);
 
 	return 0;
@@ -2902,7 +2995,7 @@ static int es705_put_tx1_route_enable_value(struct snd_kcontrol *kcontrol,
 {
 	es705_priv.tx1_route_enable = ucontrol->value.integer.value[0];
 
-	dev_dbg(es705_priv.dev, "%s(): tx1_route_enable = %d\n",
+	dev_dbg(es705_priv.dev, "%s(): tx1_route_enable = %zu\n",
 		__func__, es705_priv.tx1_route_enable);
 
 #if defined(SAMSUNG_ES705_FEATURE)
@@ -2929,7 +3022,7 @@ static int es705_get_rx2_route_enable_value(struct snd_kcontrol *kcontrol,
 {
 	ucontrol->value.integer.value[0] = es705_priv.rx2_route_enable;
 
-	dev_dbg(es705_priv.dev, "%s(): rx2_route_enable = %d\n",
+	dev_dbg(es705_priv.dev, "%s(): rx2_route_enable = %zu\n",
 		__func__, es705_priv.rx2_route_enable);
 
 	return 0;
@@ -2940,7 +3033,7 @@ static int es705_put_rx2_route_enable_value(struct snd_kcontrol *kcontrol,
 {
 	es705_priv.rx2_route_enable = ucontrol->value.integer.value[0];
 
-	dev_dbg(es705_priv.dev, "%s(): rx2_route_enable = %d\n",
+	dev_dbg(es705_priv.dev, "%s(): rx2_route_enable = %zu\n",
 		__func__, es705_priv.rx2_route_enable);
 
 #if defined(SAMSUNG_ES705_FEATURE)
@@ -4005,7 +4098,7 @@ static int es705_put_preset_value(struct snd_kcontrol *kcontrol,
 	struct soc_mixer_control *mc =
 	    (struct soc_mixer_control *)kcontrol->private_value;
 	unsigned int reg = mc->reg;
-	unsigned int value;
+	size_t value;
 	int rc = 0;
 
 	value = ucontrol->value.integer.value[0];
@@ -4437,12 +4530,12 @@ static int es705_put_vs_detection_sensitivity(struct snd_kcontrol *kcontrol,
 	struct soc_mixer_control *mc =
 	    (struct soc_mixer_control *)kcontrol->private_value;
 	unsigned int reg = mc->reg;
-	unsigned int value;
+	size_t value;
 	int rc = 0;
 
 	value = ucontrol->value.integer.value[0];
 
-	dev_dbg(es705_priv.dev, "%s(): ucontrol = %ld value = %d\n",
+	dev_dbg(es705_priv.dev, "%s(): ucontrol = %ld value = %zu\n",
 		__func__, ucontrol->value.integer.value[0], value);
 
 	rc = es705_write(NULL, reg, value);
@@ -4475,12 +4568,12 @@ static int es705_put_vad_sensitivity(struct snd_kcontrol *kcontrol,
 	struct soc_mixer_control *mc =
 	    (struct soc_mixer_control *)kcontrol->private_value;
 	unsigned int reg = mc->reg;
-	unsigned int value;
+	size_t value;
 	int rc = 0;
 
 	value = ucontrol->value.integer.value[0];
 
-	dev_dbg(es705_priv.dev, "%s(): ucontrol = %ld value = %d\n",
+	dev_dbg(es705_priv.dev, "%s(): ucontrol = %ld value = %zu\n",
 		__func__, ucontrol->value.integer.value[0], value);
 
 	rc = es705_write(NULL, reg, value);
@@ -4512,12 +4605,12 @@ static int es705_put_cvs_preset_value(struct snd_kcontrol *kcontrol,
 	struct soc_mixer_control *mc =
 	    (struct soc_mixer_control *)kcontrol->private_value;
 	unsigned int reg = mc->reg;
-	unsigned int value;
+	size_t value;
 	int rc = 0;
 
 	value = ucontrol->value.integer.value[0];
 
-	dev_info(es705_priv.dev, "%s(): cvs_preset=0x%x\n", __func__, value);
+	dev_info(es705_priv.dev, "%s(): cvs_preset=0x%zx\n", __func__, value);
 
 	rc = es705_write(NULL, reg, value);
 	if (rc) {

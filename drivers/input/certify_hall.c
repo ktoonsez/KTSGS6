@@ -78,6 +78,12 @@ static void certify_cover_work(struct work_struct *work)
 
 	if(first == second) {
 		certify_cover = first;
+#ifdef CONFIG_CERTIFY_HALL_NFC_WA
+		if(certify_cover)
+			felica_ant_tuning(1);
+		else
+			felica_ant_tuning(0);
+#endif
 		input_report_switch(ddata->input, SW_CERTIFYHALL, certify_cover);
 		input_sync(ddata->input);
 	}
@@ -95,6 +101,12 @@ static void certify_cover_work(struct work_struct *work)
 	printk("[keys] %s certify_status : %d (%s)\n", __func__, first, first?"attach":"detach");
 
 	certify_cover = first;
+#ifdef CONFIG_CERTIFY_HALL_NFC_WA
+	if(certify_cover)
+		felica_ant_tuning(1);
+	else
+		felica_ant_tuning(0);
+#endif
 	input_report_switch(ddata->input,
 			SW_CERTIFYHALL, certify_cover);
 	input_sync(ddata->input);

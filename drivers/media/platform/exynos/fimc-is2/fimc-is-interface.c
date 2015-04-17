@@ -2103,17 +2103,10 @@ void wq_func_group(struct fimc_is_device_ischain *device,
 	}
 
 	if (status) {
-#ifdef CONFIG_ENABLE_HAL3_2_META_INTERFACE
 		lindex = frame->shot->ctl.vendor_entry.lowIndexParam;
 		lindex &= ~frame->shot->dm.vendor_entry.lowIndexParam;
 		hindex = frame->shot->ctl.vendor_entry.highIndexParam;
 		hindex &= ~frame->shot->dm.vendor_entry.highIndexParam;
-#else
-		lindex = frame->shot->ctl.entry.lowIndexParam;
-		lindex &= ~frame->shot->dm.entry.lowIndexParam;
-		hindex = frame->shot->ctl.entry.highIndexParam;
-		hindex &= ~frame->shot->dm.entry.highIndexParam;
-#endif
 	}
 
 	if (unlikely(fcount != frame->fcount)) {

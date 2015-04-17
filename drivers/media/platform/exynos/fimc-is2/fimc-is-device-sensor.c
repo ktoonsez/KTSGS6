@@ -362,7 +362,7 @@ static int fimc_is_sensor_mclk_on(struct fimc_is_device_sensor *device)
 #ifdef CONFIG_COMPANION_USE
 	if (module_companion != NULL && module_companion->position == device->position) {
 		if (test_bit(FIMC_IS_COMPANION_MCLK_ON, &device_companion->state)) {
-			minfo("%s : sensor mclk will on with companion mclk.", device, __func__);
+			minfo("%s : sensor mclk will on with companion mclk.\n", device, __func__);
 			set_bit(FIMC_IS_SENSOR_MCLK_ON, &device->state);
 			goto p_err;
 		}
@@ -571,7 +571,7 @@ int fimc_is_sensor_gpio_on(struct fimc_is_device_sensor *device)
 #ifdef CONFIG_COMPANION_USE
 	if (module_companion != NULL && module_companion->position == device->position) {
 		if (test_bit(FIMC_IS_COMPANION_GPIO_ON, &device_companion->state)) {
-			info("%s : sensor gpio is already on.", __func__);
+			info("%s : sensor gpio is already on.\n", __func__);
 			set_bit(FIMC_IS_SENSOR_GPIO_ON, &device->state);
 			goto p_err;
 		}
@@ -664,7 +664,7 @@ int fimc_is_sensor_gpio_off(struct fimc_is_device_sensor *device)
 #ifdef CONFIG_COMPANION_USE
 	if (module_companion != NULL && module_companion->position == device->position) {
 		if (test_bit(FIMC_IS_COMPANION_GPIO_ON, &device_companion->state)) {
-			info("%s : companion gpio is on. we will gpio off on device-companion", __func__);
+			info("%s : companion gpio is on. we will gpio off on device-companion\n", __func__);
 			clear_bit(FIMC_IS_SENSOR_GPIO_ON, &device->state);
 			goto p_err;
 		}
@@ -888,12 +888,22 @@ p_err:
 	return ret;
 }
 
-static int fimc_is_sensor_tag(struct fimc_is_device_sensor *device,
+int fimc_is_sensor_tag(struct fimc_is_device_sensor *device,
 	struct fimc_is_frame *frame)
 {
 	int ret = 0;
+	u32 hashkey;
+
+	BUG_ON(!device);
+	BUG_ON(!frame);
+
+	hashkey = frame->fcount % FIMC_IS_TIMESTAMP_HASH_KEY;
 	frame->shot->dm.request.frameCount = frame->fcount;
-	frame->shot->dm.sensor.timeStamp = fimc_is_get_timestamp();
+	frame->shot->dm.sensor.timeStamp = device->timestamp[hashkey];
+	frame->shot->udm.sensor.timeStampBoot = device->timestampboot[hashkey];
+#ifdef DBG_JITTER
+	fimc_is_jitter(frame->shot->dm.sensor.timeStamp);
+#endif
 
 	return ret;
 }
@@ -944,6 +954,7 @@ static int fimc_is_sensor_notify_by_fstr(struct fimc_is_device_sensor *device, v
 	int ret = 0;
 	struct fimc_is_framemgr *framemgr;
 	struct fimc_is_frame *frame;
+	u32 hashkey;
 
 	BUG_ON(!device);
 	BUG_ON(!arg);
@@ -957,6 +968,10 @@ static int fimc_is_sensor_notify_by_fstr(struct fimc_is_device_sensor *device, v
 			wake_up(&device->instant_wait);
 	}
 
+	hashkey = device->fcount % FIMC_IS_TIMESTAMP_HASH_KEY;
+	device->timestamp[hashkey] = fimc_is_get_timestamp();
+	device->timestampboot[hashkey] = fimc_is_get_timestamp_boot();
+
 	framemgr_e_barrier(framemgr, FMGR_IDX_28);
 
 	fimc_is_frame_process_head(framemgr, &frame);
@@ -966,33 +981,11 @@ static int fimc_is_sensor_notify_by_fstr(struct fimc_is_device_sensor *device, v
 		do_gettimeofday(&frame->tzone[TM_FLITE_STR]);
 #endif
 #endif
-		if (frame->has_fcount) {
-			struct list_head *temp;
-			struct fimc_is_frame *next_frame;
-			bool finded = false;
 
-			list_for_each(temp, &framemgr->frame_process_head) {
-				next_frame = list_entry(temp, struct fimc_is_frame, list);
-				if (next_frame->has_fcount) {
-					continue;
-				} else {
-					finded = true;
-					break;
-				}
-			}
-
-			if (finded) {
-				/* finded frame in processing frame list */
-				next_frame->has_fcount = true;
-				next_frame->fcount = device->fcount;
-				fimc_is_sensor_tag(device, next_frame);
-			}
-		} else {
-			frame->fcount = device->fcount;
-			fimc_is_sensor_tag(device, frame);
-			frame->has_fcount = true;
-		}
+		frame->fcount = device->fcount;
+		fimc_is_sensor_tag(device, frame);
 	}
+
 #ifdef TASKLET_MSG
 	if (!frame) {
 		merr("[SEN] process is empty", device);
@@ -1031,7 +1024,6 @@ static int fimc_is_sensor_notify_by_fend(struct fimc_is_device_sensor *device, v
 #endif
 #endif
 
-		frame->has_fcount = false;
 		buffer_done(device->vctx, frame->index, VB2_BUF_STATE_DONE);
 
 		/* device driving */
@@ -1113,7 +1105,7 @@ static void fimc_is_sensor_instanton(struct work_struct *data)
 		fimc_is_sensor_front_stop(device);
 
 		timetoelapse = (jiffies_to_msecs(timeout) - jiffies_to_msecs(timetowait));
-		info("[FRT:D:%d] instant off(fcount : %d, time : %ldms)", device->instance,
+		info("[FRT:D:%d] instant off(fcount : %d, time : %ldms)\n", device->instance,
 			device->instant_cnt,
 			timetoelapse);
 	}
@@ -2186,6 +2178,8 @@ int fimc_is_sensor_front_start(struct fimc_is_device_sensor *device,
 		goto p_err;
 	}
 
+	memset(device->timestamp, 0x0, FIMC_IS_TIMESTAMP_HASH_KEY * sizeof(u64));
+	memset(device->timestampboot, 0x0, FIMC_IS_TIMESTAMP_HASH_KEY * sizeof(u64));
 	device->instant_cnt = instant_cnt;
 	subdev_csi = device->subdev_csi;
 	subdev_module = device->subdev_module;

@@ -761,6 +761,7 @@ struct decon_device {
 	struct mdnie_info *mdnie;
 	struct decon_win_config_data winconfig;
 #endif
+	unsigned int force_fullupdate;
 };
 
 static inline struct decon_device *get_decon_drvdata(u32 id)

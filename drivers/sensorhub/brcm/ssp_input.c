@@ -562,6 +562,13 @@ void report_grip_data(struct ssp_data *data, struct sensor_value *gripdata)
 		return;
 	}
 
+#if defined(CONFIG_MUIC_NOTIFIER)
+	if (data->jig_is_attached) {
+		pr_err("[SSP] jig_is_attached, skip reporting grip data\n");
+		return;
+	}
+#endif
+
 	data->buf[GRIP_SENSOR].cap_main = gripdata->cap_main;
 	data->buf[GRIP_SENSOR].useful = gripdata->useful;
 	data->buf[GRIP_SENSOR].offset = gripdata->offset;

@@ -263,12 +263,25 @@ static void __init alloc_init_pmd(pud_t *pud, unsigned long addr,
 {
 	pmd_t *pmd;
 	unsigned long next;
-
+#ifdef CONFIG_TIMA_RKP
+	int rkp_do = 0;
+#endif
 	/*
 	 * Check for initial section mappings in the pgd/pud and remove them.
 	 */
 	if (pud_none(*pud) || pud_bad(*pud)) {
+#ifdef CONFIG_TIMA_RKP
+#ifdef CONFIG_KNOX_KAP
+		if (boot_mode_security)  rkp_do = 1;
+#endif
+		if( rkp_do ){
+			pmd = rkp_ro_alloc();
+		}else{
+			pmd = early_alloc(PTRS_PER_PMD * sizeof(pmd_t));
+		}
+#else	/* !CONFIG_TIMA_RKP */
 		pmd = early_alloc(PTRS_PER_PMD * sizeof(pmd_t));
+#endif
 		pud_populate(&init_mm, pud, pmd);
 	}
 
@@ -343,6 +356,10 @@ static void __init map_mem(void)
 	phys_addr_t start;
 	phys_addr_t end;
 
+#ifdef CONFIG_TIMA_RKP
+	phys_addr_t mid = 0x60000000;
+	int rkp_do = 0;
+#endif
 	/*
 	 * Temporarily limit the memblock range. We need to do this as
 	 * create_mapping requires puds, pmds and ptes to be allocated from
@@ -379,14 +396,22 @@ static void __init map_mem(void)
 		}
 #endif
 
-		create_mapping(start, __phys_to_virt(start), end - start);
-	}
 #ifdef CONFIG_TIMA_RKP
 #ifdef CONFIG_KNOX_KAP
-	if (boot_mode_security)
+	if (boot_mode_security)  rkp_do = 1;
 #endif
+	if( rkp_do ){
+		create_mapping(start, __phys_to_virt(start), mid - start);
 		memset((void*)RKP_RBUF_VA, 0, 0x800000);
+		create_mapping(mid, __phys_to_virt(mid), end - mid);
+	}else{
+		create_mapping(start, __phys_to_virt(start), end - start);
+	}
+#else /* !CONFIG_TIMA_RKP */
+		create_mapping(start, __phys_to_virt(start), end - start);
 #endif
+	}
+
 #ifdef CONFIG_TIMA_RKP
 #ifdef CONFIG_KNOX_KAP
 	if (boot_mode_security) {
@@ -427,7 +452,9 @@ static void __init map_mem(void)
 void __init paging_init(struct machine_desc *mdesc)
 {
 	void *zero_page;
-
+#ifdef CONFIG_TIMA_RKP
+	int rkp_do =  0;
+#endif
 	map_mem();
 
 	if(mdesc->map_io)
@@ -441,7 +468,20 @@ void __init paging_init(struct machine_desc *mdesc)
 	flush_tlb_all();
 
 	/* allocate the zero page. */
+	/* change zero page address */
+
+#ifdef CONFIG_TIMA_RKP
+#ifdef CONFIG_KNOX_KAP
+	if (boot_mode_security)
+		rkp_do = 1;
+#endif
+	if (rkp_do)
+		zero_page = rkp_ro_alloc();
+	else
+		zero_page = early_alloc(PAGE_SIZE);
+#else	/* !CONFIG_TIMA_RKP */
 	zero_page = early_alloc(PAGE_SIZE);
+#endif
 
 	bootmem_init();
 

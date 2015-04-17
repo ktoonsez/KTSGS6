@@ -14,6 +14,8 @@
 #define ESOC_GET_CRASH		_IOR(ESOC_CODE, 10, u32)
 #define ESOC_SECURE_FAIL	_IO(ESOC_CODE, 11)
 #define ESOC_SET_HSIC_READY	_IO(ESOC_CODE, 12)
+#define ESOC_GET_RESTARTED	_IOR(ESOC_CODE, 13, u32)
+#define ESOC_PANIC		_IO(ESOC_CODE, 14)
 
 /*Link types for communication with external SOCs*/
 #define HSIC		"HSIC"
@@ -41,6 +43,7 @@ enum esoc_cmd {
 	ESOC_EXIT_DEBUG,
 	ESOC_SET_CRASH_OCCURRENCE,
 	ESOC_GET_CRASH_OCCURRENCE,
+	ESOC_GET_RESTART_REASON,
 };
 
 enum esoc_notify {

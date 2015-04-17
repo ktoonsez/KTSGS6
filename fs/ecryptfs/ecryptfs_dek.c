@@ -9,31 +9,10 @@ extern int dek_is_persona_locked(int userid);
 
 static int ecryptfs_update_crypt_flag(struct dentry *dentry, int is_sensitive);
 
-#if ECRYPTFS_DEK_DEBUG
-static void ecryptfs_dumpkey(int userid, char *tag, unsigned char *buf, int len)
-{
-    int     i;
-    char	s[512];
-
-    s[0] = 0;
-    for(i=0;i<len && i<16;++i) {
-        char tmp[8];
-        sprintf(tmp, " %02x", buf[i]);
-        strcat(s, tmp);
-    }
-
-    if (len > 16) {
-        char tmp[8];
-        sprintf(tmp, " ...");
-        strcat(s, tmp);
-    }
-
-    DEK_LOGD("id:%d, %s [%s len=%d]\n", userid, tag, s, len);
-}
-#endif
-
 static int ecryptfs_set_key(struct ecryptfs_crypt_stat *crypt_stat) {
 	int rc = 0;
+
+    mutex_lock(&crypt_stat->cs_tfm_mutex);
 
 	if (!(crypt_stat->flags & ECRYPTFS_KEY_SET)) {
 		rc = crypto_ablkcipher_setkey(crypt_stat->tfm, crypt_stat->key,
@@ -42,7 +21,6 @@ static int ecryptfs_set_key(struct ecryptfs_crypt_stat *crypt_stat) {
 			ecryptfs_printk(KERN_ERR,
 					"Error setting key; rc = [%d]\n",
 					rc);
-			mutex_unlock(&crypt_stat->cs_tfm_mutex);
 			rc = -EINVAL;
 			goto out;
 		}
@@ -51,6 +29,7 @@ static int ecryptfs_set_key(struct ecryptfs_crypt_stat *crypt_stat) {
 	}
 
 out:
+    mutex_unlock(&crypt_stat->cs_tfm_mutex);
 	return rc;
 }
 
@@ -78,16 +57,36 @@ int ecryptfs_is_persona_locked(int userid)
 
 extern int32_t sdp_mm_set_process_sensitive(unsigned int proc_id);
 
+#define PSEUDO_KEY_LEN 32
+const char pseudo_key[PSEUDO_KEY_LEN] = {
+        // PSEUDOSDP
+        0x50, 0x53, 0x55, 0x45, 0x44, 0x4f, 0x53, 0x44,
+        0x50, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+};
+
 void ecryptfs_clean_sdp_dek(struct ecryptfs_crypt_stat *crypt_stat)
 {
-	DEK_LOGD("%s()\n", __func__);
+    int rc = 0;
+
+	printk("%s()\n", __func__);
+
+	if(crypt_stat->tfm) {
+	    mutex_lock(&crypt_stat->cs_tfm_mutex);
+	    rc = crypto_ablkcipher_setkey(crypt_stat->tfm, pseudo_key,
+	            PSEUDO_KEY_LEN);
+        if (rc) {
+            ecryptfs_printk(KERN_ERR,
+                    "Error cleaning tfm rc = [%d]\n",
+                    rc);
+        }
+	    mutex_unlock(&crypt_stat->cs_tfm_mutex);
+	}
+
 	memset(crypt_stat->key, 0, ECRYPTFS_MAX_KEY_BYTES);
 	crypt_stat->flags &= ~(ECRYPTFS_KEY_SET);
 	crypt_stat->flags &= ~(ECRYPTFS_KEY_VALID);
-
-	/*
-	 * TODO : need to clean tfm
-	 */
 }
 
 int ecryptfs_get_sdp_dek(struct ecryptfs_crypt_stat *crypt_stat)
@@ -105,10 +104,6 @@ int ecryptfs_get_sdp_dek(struct ecryptfs_crypt_stat *crypt_stat)
 
 			memset(crypt_stat->key, 0, ECRYPTFS_MAX_KEY_BYTES);
 
-#if ECRYPTFS_DEK_DEBUG
-			DEK_LOGD("get_sdp_dek: sensitive, dek type: %d\n", crypt_stat->sdp_dek.type);
-			ecryptfs_dumpkey(crypt_stat->userid, "sdp_dek:", crypt_stat->sdp_dek.buf, crypt_stat->sdp_dek.len);
-#endif
 			if (crypt_stat->sdp_dek.type != DEK_TYPE_PLAIN) {
 				rc = dek_decrypt_dek_efs(crypt_stat->userid, &crypt_stat->sdp_dek, &DEK);
 			} else {
@@ -121,10 +116,6 @@ int ecryptfs_get_sdp_dek(struct ecryptfs_crypt_stat *crypt_stat)
 				memset(&DEK, 0, sizeof(dek_t));
 				goto out;
 			}
-#if ECRYPTFS_DEK_DEBUG
-			ecryptfs_dumpkey(crypt_stat->userid, "decrypted:", DEK.buf, DEK.len);
-			DEK_LOGD("decrypted key size is %d\n", DEK.len);
-#endif
 			memcpy(crypt_stat->key, DEK.buf, DEK.len);
 			crypt_stat->key_size = DEK.len;
 			memset(&DEK, 0, sizeof(dek_t));
@@ -326,7 +317,7 @@ int ecryptfs_sdp_set_sensitive(struct dentry *dentry) {
 
 	if (crypt_stat->key_size > DEK_MAXLEN ||
 			crypt_stat->key_size > UINT_MAX){
-		DEK_LOGE("Too large key_size = [%lu]\n", crypt_stat->key_size);
+		DEK_LOGE("%s Too large key_size\n", __func__);
 		rc = -EFAULT;
 		goto out;
 	}

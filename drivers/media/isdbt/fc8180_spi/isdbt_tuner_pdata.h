@@ -30,5 +30,6 @@ struct isdbt_platform_data {
 	int gpio_spi_clk;
 	const char *ldo_vdd_1p8;
 	u8 regulator_is_enable;
+	int BER;
 };
 #endif

@@ -271,6 +271,13 @@ static long esoc_dev_ioctl(struct file *file, unsigned int cmd,
 		sec_peripheral_secure_check_fail();
 		break;
 #endif
+	case ESOC_GET_RESTARTED:
+		status = clink_ops->cmd_exe(ESOC_GET_RESTART_REASON, esoc_clink);
+		pr_info("%s, GET_RESTARTED: %d\n", __func__, status);
+		put_user(status, (unsigned long __user *)uarg);
+		break;
+	case ESOC_PANIC:
+		panic("hello packet timeout or secure boot fail");
 	default:
 		return -EINVAL;
 	};

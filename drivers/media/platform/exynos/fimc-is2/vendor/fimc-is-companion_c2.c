@@ -276,7 +276,7 @@ static int fimc_is_comp_i2c_read(struct i2c_client *client, u16 addr, u16 *data)
 
 	err = i2c_transfer(client->adapter, msg, 2);
 	if (unlikely(err != 2)) {
-		pr_err("%s: register read fail\n", __func__);
+		err("%s: register read fail", __func__);
 		return -EIO;
 	}
 
@@ -312,12 +312,12 @@ static int fimc_is_comp_i2c_write(struct i2c_client *client ,u16 addr, u16 data)
 
         /* Retry occured */
         if (unlikely(retries < I2C_RETRY_COUNT)) {
-                pr_err("i2c_write: error %d, write (%04X, %04X), retry %d\n",
+                err("i2c_write: error %d, write (%04X, %04X), retry %d",
                         err, addr, data, I2C_RETRY_COUNT - retries);
         }
 
         if (unlikely(ret != 1)) {
-                pr_err("I2C does not work\n\n");
+                err("I2C does not work\n");
                 return -EIO;
         }
 
@@ -449,7 +449,7 @@ int fimc_is_comp_get_crc(struct fimc_is_core *core, u32 addr, int size, char* cr
 	while (retry_count--) {
 		ret = fimc_is_comp_single_read(core, sflash_cmd, &data[0]);
 		if (data[0] == 0x0000) {
-			pr_info("%s: API_SFLASH_CMD is cleared(%d)!\n", __func__, retry_count);
+			info("%s: API_SFLASH_CMD is cleared(%d)!\n", __func__, retry_count);
 			break;
 		} else {
 			if (ret) {
@@ -500,9 +500,9 @@ static int fimc_is_comp_check_crc32(struct fimc_is_core *core, u32 addr, int siz
 
 	if (memcmp((const void *)crc32, (const void *)calc_crc, FIMC_IS_COMPANION_CRC_SIZE)) {
 		err("%x crc32 is not same!\n", addr);
-		pr_info("%x crc32 = %x%x%x%x\n",
+		info("%x crc32 = %x%x%x%x\n",
 				addr, crc32[0], crc32[1], crc32[2], crc32[3]);
-		pr_info("companion crc32 = %x%x%x%x\n",
+		info("companion crc32 = %x%x%x%x\n",
 				calc_crc[0],
 				calc_crc[1],
 				calc_crc[2],
@@ -510,7 +510,7 @@ static int fimc_is_comp_check_crc32(struct fimc_is_core *core, u32 addr, int siz
 		ret = -EINVAL;
 		goto p_err;
 	} else {
-		pr_info("%x crc32 is same!\n", addr);
+		info("%x crc32 is same!\n", addr);
 	}
 
 p_err:
@@ -634,7 +634,7 @@ static int fimc_is_comp_load_binary(struct fimc_is_core *core, char *name, int b
 
 	fw_requested = 0;
 	size = fp->f_path.dentry->d_inode->i_size;
-	pr_info("start read sdcard, file path %s, size %lu Bytes\n", fw_name, size);
+	info("start read sdcard, file path %s, size %lu Bytes\n", fw_name, size);
 
 #ifdef USE_ION_ALLOC
 	handle = ion_alloc(core->fimc_ion_client, (size_t)size, 0,
@@ -671,7 +671,7 @@ static int fimc_is_comp_load_binary(struct fimc_is_core *core, char *name, int b
 		ret_data->firmware_size = (int)size;
 		memset(ret_data->firmware_crc32, 0, sizeof(ret_data->firmware_crc32));
 		memcpy(ret_data->firmware_crc32, (const void *) (buf + nread - FIMC_IS_COMPANION_CRC_SIZE), FIMC_IS_COMPANION_CRC_SIZE);
-		pr_info("Companion firmware size = %d firmware crc32 = %x%x%x%x\n",
+		info("Companion firmware size = %d firmware crc32 = %x%x%x%x\n",
 				ret_data->firmware_size,
 				ret_data->firmware_crc32[0],
 				ret_data->firmware_crc32[1],
@@ -737,7 +737,7 @@ request_fw:
 			memcpy((void *)companion_rev, fw_blob->data + size - 16, 11);
 			ret_data->firmware_size = (int)size;
 			memcpy(ret_data->firmware_crc32, (const void *) (fw_blob->data + size - FIMC_IS_COMPANION_CRC_SIZE), FIMC_IS_COMPANION_CRC_SIZE);
-			pr_info("Companion firmware size = %d firmware crc32 = %x%x%x%x\n",
+			info("Companion firmware size = %d firmware crc32 = %x%x%x%x\n",
 					ret_data->firmware_size,
 					ret_data->firmware_crc32[0],
 					ret_data->firmware_crc32[1],
@@ -866,7 +866,7 @@ static int fimc_is_comp_load_cal(struct fimc_is_core *core, char *name, int posi
 		fimc_is_sec_get_sysfs_finfo_front(&sysfs_finfo);
 		fimc_is_sec_get_front_cal_buf(&cal_buf);
 	}
-	pr_info("Camera: SPI write cal data, name = %s\n", name);
+	info("Camera: SPI write cal data, name = %s\n", name);
 
 	if (!strcmp(name, COMP_LSC)) {
 		offset = sysfs_finfo->lsc_gain_start_addr;
@@ -1269,13 +1269,13 @@ int fimc_is_comp_is_valid(void *core_data)
 	u16 companion_id = 0;
 
 	if (!core->spi1.device) {
-		pr_info("spi1 device is not available");
+		info("spi1 device is not available\n");
 		goto exit;
 	}
 
 	/* check validation(Read data must be 0x73C2) */
 	fimc_is_comp_i2c_read(core->client0, 0x0, &companion_id);
-	pr_info("Companion vaildation: 0x%04x\n", companion_id);
+	info("Companion vaildation: 0x%04x\n", companion_id);
 
 exit:
 	return ret;
@@ -1287,14 +1287,14 @@ int fimc_is_comp_read_ver(void *core_data)
 	int ret = 0;
 
 	if (!core->client0) {
-		pr_info("i2c device is not available");
+		info("i2c device is not available\n");
 		goto p_err;
 	}
 
 	companion_ver = 0;
 	/* check companion version(EVT0, EVT1) */
 	fimc_is_comp_i2c_read(core->client0, 0x02, &companion_ver);
-	pr_info("Companion version: 0x%04x\n", companion_ver);
+	info("Companion version: 0x%04x\n", companion_ver);
 
 p_err:
 	return ret;
@@ -1324,7 +1324,7 @@ int fimc_is_comp_loadcal(void *core_data, int position)
 	}
 
 	if (!fimc_is_sec_check_from_ver(core, position)) {
-		pr_err("%s: error, not implemented! skip..\n", __func__);
+		err("%s: error, not implemented! skip..", __func__);
 		return 0;
 	}
 
@@ -1452,7 +1452,7 @@ int fimc_is_comp_loadcal(void *core_data, int position)
 				err("fimc_is_comp_load_binary(%s) fail", COMP_LSC);
 				goto p_err;
 			}
-			pr_info("LSC from FROM loaded");
+			info("LSC from FROM loaded\n");
 		}
 #ifdef USE_DEFAULT_CAL
 		else {
@@ -1461,12 +1461,12 @@ int fimc_is_comp_loadcal(void *core_data, int position)
 				err("fimc_is_comp_load_binary(%s) fail", COMP_DEFAULT_LSC);
 				goto p_err;
 			}
-			pr_info("Default LSC loaded");
+			info("Default LSC loaded\n");
 		}
 #endif
 		usleep_range(1000, 1000);
 	} else {
-		pr_info("Did not load LSC cal data");
+		info("Did not load LSC cal data\n");
 	}
 
 	/*Workaround : If FROM has ver.V003, Skip PDAF Cal loading to companion.*/
@@ -1494,7 +1494,7 @@ int fimc_is_comp_loadcal(void *core_data, int position)
 					err("fimc_is_comp_load_binary(%s) fail", COMP_COEF_CAL);
 					goto p_err;
 				}
-				pr_info("COEF from FROM loaded");
+				info("COEF from FROM loaded\n");
 			}
 #ifdef USE_DEFAULT_CAL
 			else {
@@ -1503,12 +1503,12 @@ int fimc_is_comp_loadcal(void *core_data, int position)
 					err("fimc_is_comp_load_binary(%s) fail", COMP_DEFAULT_COEF);
 					goto p_err;
 				}
-				pr_info("Default COEF loaded");
+				info("Default COEF loaded\n");
 			}
 #endif
 			usleep_range(1000, 1000);
 		} else {
-			pr_info("Did not load COEF cal data");
+			info("Did not load COEF cal data\n");
 		}
 	}
 
@@ -1529,7 +1529,7 @@ int fimc_is_comp_retention(void *core_data)
 	struct file *fp = NULL;
 	mm_segment_t old_fs;
 
-	pr_info("%s: start\n", __func__);
+	info("%s: start\n", __func__);
 
 	core_pdata = dev_get_platdata(fimc_is_dev);
 	if (!core_pdata) {

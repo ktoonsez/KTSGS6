@@ -1286,6 +1286,7 @@ int decon_enable(struct decon_device *decon)
 				goto err;
 			}
 		} else if (decon->out_type == DECON_OUT_DSI) {
+			decon->force_fullupdate = 0;
 			pm_stay_awake(decon->dev);
 			dev_warn(decon->dev, "pm_stay_awake");
 			ret = v4l2_subdev_call(decon->output_sd, video, s_stream, 1);
@@ -2475,6 +2476,10 @@ static void decon_set_win_update_config(struct decon_device *decon,
 			memset(update_config, 0, sizeof(struct decon_win_config));
 	}
 #endif
+	if (decon->out_type == DECON_OUT_DSI) {
+		if (decon->force_fullupdate)
+			memset(update_config, 0, sizeof(struct decon_win_config));
+	}
 
 #if defined(CONFIG_EXYNOS_DECON_MDNIE)
 	if(!decon->id && decon->mdnie->need_update) {
@@ -4205,11 +4210,12 @@ static int decon_esd_panel_reset(struct decon_device *decon)
 	if (decon->pdata->psr_mode == DECON_MIPI_COMMAND_MODE)
 		decon->ignore_vsync = false;
 
-	decon->need_update = false;
+	decon->need_update = true;
 	decon->update_win.x = 0;
 	decon->update_win.y = 0;
 	decon->update_win.w = decon->lcd_info->xres;
 	decon->update_win.h = decon->lcd_info->yres;
+	decon->force_fullupdate = 1;
 
 	if (decon->pdata->trig_mode == DECON_HW_TRIG)
 		decon_reg_set_trigger(decon->id, decon->pdata->dsi_mode,
@@ -4820,6 +4826,7 @@ decon_rest_init:
 	}
 #endif
 	decon->log_cnt = 0;
+	decon->force_fullupdate = 0;
 
 	decon_info("decon%d registered successfully", decon->id);
 

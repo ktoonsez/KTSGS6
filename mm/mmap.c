@@ -1213,7 +1213,7 @@ unsigned long do_mmap_pgoff(struct file *file, unsigned long addr,
 
 	*populate = 0;
 
-	if (file && (file->f_op->get_lower_file))
+	while (file && (file->f_mode & FMODE_NOMAPPABLE))
 		file = file->f_op->get_lower_file(file);
 
 	/*

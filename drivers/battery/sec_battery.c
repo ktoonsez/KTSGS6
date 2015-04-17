@@ -87,7 +87,7 @@ static struct device_attribute sec_battery_attrs[] = {
 	SEC_BATTERY_ATTR(batt_discharging_ntc_adc),
 	SEC_BATTERY_ATTR(batt_self_discharging_control),
 #endif
-#if defined(CONFIG_WIRELESS_CHARGER_INBATTERY) && defined(CONFIG_WIRELESS_CHARGER_INBATTERY_CS100)
+#if defined(CONFIG_WIRELESS_CHARGER_INBATTERY)
 	SEC_BATTERY_ATTR(batt_inbat_wireless_cs100),
 #endif
 	SEC_BATTERY_ATTR(hmt_ta_connected),
@@ -544,7 +544,8 @@ static void sec_bat_set_charging_status(struct sec_battery_info *battery,
 	switch (status) {
 	case POWER_SUPPLY_STATUS_NOT_CHARGING:
 	case POWER_SUPPLY_STATUS_DISCHARGING:
-		if(battery->status == POWER_SUPPLY_STATUS_FULL) {
+		if((battery->status == POWER_SUPPLY_STATUS_FULL) ||
+		   (battery->capacity == 100)){
 #if defined(CONFIG_AFC_CHARGER_MODE)
 			value.intval = battery->capacity;
 			psy_do_property(battery->pdata->fuelgauge_name, set,
@@ -554,6 +555,11 @@ static void sec_bat_set_charging_status(struct sec_battery_info *battery,
 			psy_do_property(battery->pdata->fuelgauge_name, set,
 					POWER_SUPPLY_PROP_CHARGE_FULL, value);
 #endif
+			/* To get SOC value (NOT raw SOC), need to reset value */
+			value.intval = 0;
+			psy_do_property(battery->pdata->fuelgauge_name, get,
+					POWER_SUPPLY_PROP_CAPACITY, value);
+			battery->capacity = value.intval;
 		}
 		break;
 	default:
@@ -596,8 +602,12 @@ static bool sec_bat_battery_cable_check(struct sec_battery_info *battery)
 		if (battery->status == POWER_SUPPLY_STATUS_NOT_CHARGING) {
 			sec_bat_set_charging_status(battery,
 					POWER_SUPPLY_STATUS_CHARGING);
-
+#if defined(CONFIG_BATTERY_SWELLING)
+			if (!battery->swelling_mode)
+				sec_bat_set_charge(battery, true);
+#else
 			sec_bat_set_charge(battery, true);
+#endif
 		}
 	}
 
@@ -655,7 +665,12 @@ static bool sec_bat_ovp_uvlo_result(
 			sec_bat_set_charging_status(battery,
 					POWER_SUPPLY_STATUS_CHARGING);
 			battery->charging_mode = SEC_BATTERY_CHARGING_1ST;
+#if defined(CONFIG_BATTERY_SWELLING)
+		if (!battery->swelling_mode)
 			sec_bat_set_charge(battery, true);
+#else
+			sec_bat_set_charge(battery, true);
+#endif
 			break;
 		case POWER_SUPPLY_HEALTH_OVERVOLTAGE:
 		case POWER_SUPPLY_HEALTH_UNDERVOLTAGE:
@@ -843,7 +858,12 @@ static bool sec_bat_voltage_check(struct sec_battery_info *battery)
 		else
 			battery->charging_mode = SEC_BATTERY_CHARGING_2ND;
 		battery->is_recharging = true;
+#if defined(CONFIG_BATTERY_SWELLING)
+		if (!battery->swelling_mode)
+			sec_bat_set_charge(battery, true);
+#else
 		sec_bat_set_charge(battery, true);
+#endif
 		return false;
 	}
 
@@ -1814,12 +1834,23 @@ static bool sec_bat_time_management(
 				dev_dbg(battery->dev,
 					"%s: Reset charging current\n",
 					__func__);
+#if defined(CONFIG_BATTERY_SWELLING)
+				if (!battery->swelling_mode) {
+					if (sec_bat_set_charge(battery, true)) {
+						dev_err(battery->dev,
+							"%s: Fail to Set Charger\n",
+							__func__);
+						return true;
+					}
+				}
+#else
 				if (sec_bat_set_charge(battery, true)) {
 					dev_err(battery->dev,
 						"%s: Fail to Set Charger\n",
 						__func__);
 					return true;
 				}
+#endif
 			}
 		}
 		break;
@@ -2026,6 +2057,13 @@ static void sec_bat_do_fullcharged(
 		battery->is_recharging = false;
 		sec_bat_set_charge(battery, false);
 
+#if defined(CONFIG_WIRELESS_CHARGER_INBATTERY) && !defined(CONFIG_WIRELESS_CHARGER_INBATTERY_CS100)
+		if (battery->cable_type == POWER_SUPPLY_TYPE_WIRELESS) {
+			value.intval = POWER_SUPPLY_STATUS_FULL;
+			psy_do_property(battery->pdata->wireless_charger_name, set,
+				POWER_SUPPLY_PROP_STATUS, value);
+		}
+#endif
 		value.intval = POWER_SUPPLY_STATUS_FULL;
 		psy_do_property(battery->pdata->fuelgauge_name, set,
 			POWER_SUPPLY_PROP_STATUS, value);
@@ -2725,24 +2763,6 @@ static void sec_bat_cable_work(struct work_struct *work)
 		((battery->pdata->cable_check_type &
 		SEC_BATTERY_CABLE_CHECK_NOINCOMPATIBLECHARGE) &&
 		battery->cable_type == POWER_SUPPLY_TYPE_UNKNOWN)) {
-		if (battery->status == POWER_SUPPLY_STATUS_FULL) {
-			/* To prevent soc jumping to 100 when cable is removed on progressing
-			   forced full-charged sequence */
-#if defined(CONFIG_AFC_CHARGER_MODE)
-			val.intval = battery->capacity;
-			psy_do_property(battery->pdata->fuelgauge_name, set,
-					POWER_SUPPLY_PROP_CHARGE_FULL, val);
-#else
-			val.intval = POWER_SUPPLY_TYPE_BATTERY;
-			psy_do_property(battery->pdata->fuelgauge_name, set,
-					POWER_SUPPLY_PROP_CHARGE_FULL, val);
-#endif
-			/* To get SOC value (NOT raw SOC), need to reset value */
-			val.intval = 0;
-			psy_do_property(battery->pdata->fuelgauge_name, get,
-					POWER_SUPPLY_PROP_CAPACITY, val);
-			battery->capacity = val.intval;
-		}
 		battery->charging_mode = SEC_BATTERY_CHARGING_NONE;
 		battery->is_recharging = false;
 		sec_bat_set_charging_status(battery,
@@ -2786,8 +2806,9 @@ static void sec_bat_cable_work(struct work_struct *work)
 					SEC_BATTERY_CHARGING_2ND;
 
 			if (((battery->cable_type == POWER_SUPPLY_TYPE_HV_MAINS) ||
-			     (battery->cable_type == POWER_SUPPLY_TYPE_HV_ERR)) &&
-			    (battery->status == POWER_SUPPLY_STATUS_FULL))
+				(battery->cable_type == POWER_SUPPLY_TYPE_HV_PREPARE_MAINS) ||
+				(battery->cable_type == POWER_SUPPLY_TYPE_HV_ERR)) &&
+				(battery->status == POWER_SUPPLY_STATUS_FULL))
 				sec_bat_set_charging_status(battery,
 						POWER_SUPPLY_STATUS_FULL);
 			else
@@ -3240,7 +3261,7 @@ ssize_t sec_bat_show_attrs(struct device *dev,
 	case BATT_SELF_DISCHARGING_CONTROL:
 		break;
 #endif
-#if defined(CONFIG_WIRELESS_CHARGER_INBATTERY) && defined(CONFIG_WIRELESS_CHARGER_INBATTERY_CS100)
+#if defined(CONFIG_WIRELESS_CHARGER_INBATTERY)
 	case BATT_INBAT_WIRELESS_CS100:
 		psy_do_property(battery->pdata->wireless_charger_name, get,
 			POWER_SUPPLY_PROP_STATUS, value);
@@ -3713,7 +3734,7 @@ ssize_t sec_bat_store_attrs(
 		}
 		break;
 #endif
-#if defined(CONFIG_WIRELESS_CHARGER_INBATTERY) && defined(CONFIG_WIRELESS_CHARGER_INBATTERY_CS100)
+#if defined(CONFIG_WIRELESS_CHARGER_INBATTERY)
 	case BATT_INBAT_WIRELESS_CS100:
 		if (sscanf(buf, "%d\n", &x) == 1) {
 			union power_supply_propval value;

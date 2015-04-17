@@ -1010,10 +1010,10 @@ struct fimc_is_module_enum *active_sensor, int position)
 			info("Front Camera : the dumped Cal. data was applied successfully.\n");
 		} else {
 			if (crc32_header_check_front == true) {
-				pr_err("Front Camera : CRC32 error but only header section is no problem.\n");
+				err("Front Camera : CRC32 error but only header section is no problem.");
 				memset((void *)(cal_ptr + 0x1000), 0xFF, cal_size - 0x1000);
 			} else {
-				pr_err("Front Camera : CRC32 error for all section.\n");
+				err("Front Camera : CRC32 error for all section.");
 				memset((void *)(cal_ptr), 0xFF, cal_size);
 				ret = -EIO;
 			}
@@ -1024,10 +1024,10 @@ struct fimc_is_module_enum *active_sensor, int position)
 			info("Rear Camera : the dumped Cal. data was applied successfully.\n");
 		} else {
 			if (crc32_header_check == true) {
-				pr_err("Rear Camera : CRC32 error but only header section is no problem.\n");
+				err("Rear Camera : CRC32 error but only header section is no problem.");
 				memset((void *)(cal_ptr + 0x1000), 0xFF, cal_size - 0x1000);
 			} else {
-				pr_err("Rear Camera : CRC32 error for all section.\n");
+				err("Rear Camera : CRC32 error for all section.");
 				memset((void *)(cal_ptr), 0xFF, cal_size);
 				ret = -EIO;
 			}
@@ -1038,7 +1038,7 @@ struct fimc_is_module_enum *active_sensor, int position)
 	if (ret)
 		mwarn("calibration loading is fail", device);
 	else
-		minfo("calibration loading is success", device);
+		minfo("calibration loading is success\n", device);
 #endif
 
 	return ret;
@@ -1096,10 +1096,10 @@ static int fimc_is_ischain_loadcalb(struct fimc_is_device_ischain *device,
 #endif
 	} else {
 		if (crc32_header_check == true) {
-			pr_err("Camera : CRC32 error but only header section is no problem.\n");
+			err("Camera : CRC32 error but only header section is no problem.");
 			memset((void *)(cal_ptr + 0x1000), 0xFF, FIMC_IS_MAX_CAL_SIZE - 0x1000);
 		} else {
-			pr_err("Camera : CRC32 error for all section.\n");
+			err("Camera : CRC32 error for all section.");
 			memset((void *)(cal_ptr), 0xFF, FIMC_IS_MAX_CAL_SIZE);
 			ret = -EIO;
 		}
@@ -1110,7 +1110,7 @@ static int fimc_is_ischain_loadcalb(struct fimc_is_device_ischain *device,
 	if (ret)
 		mwarn("calibration loading is fail", device);
 	else
-		minfo("calibration loading is success", device);
+		minfo("calibration loading is success\n", device);
 #endif
 	return ret;
 }
@@ -1169,17 +1169,10 @@ static int fimc_is_itf_s_param(struct fimc_is_device_ischain *device,
 
 	if (frame) {
 		dst_base = (ulong)&device->is_region->parameter;
-#ifdef CONFIG_ENABLE_HAL3_2_META_INTERFACE
 		src_base = (ulong)frame->shot->ctl.vendor_entry.parameter;
 
 		frame->shot->ctl.vendor_entry.lowIndexParam |= lindex;
 		frame->shot->ctl.vendor_entry.highIndexParam |= hindex;
-#else
-		src_base = (ulong)frame->shot->ctl.entry.parameter;
-
-		frame->shot->ctl.entry.lowIndexParam |= lindex;
-		frame->shot->ctl.entry.highIndexParam |= hindex;
-#endif
 
 		for (index = 0; lindex && (index < 32); index++) {
 			flag = 1 << index;
@@ -1235,11 +1228,7 @@ void * fimc_is_itf_g_param(struct fimc_is_device_ischain *device,
 	BUG_ON(!device);
 
 	if (frame) {
-#ifdef CONFIG_ENABLE_HAL3_2_META_INTERFACE
 		dst_base = (ulong)&frame->shot->ctl.vendor_entry.parameter[0];
-#else
-		dst_base = (ulong)&frame->shot->ctl.entry.parameter[0];
-#endif
 		dst_param = (dst_base + (index * PARAMETER_MAX_SIZE));
 		src_base = (ulong)&device->is_region->parameter;
 		src_param = (src_base + (index * PARAMETER_MAX_SIZE));
@@ -1679,12 +1668,12 @@ static int fimc_is_itf_setfile(struct fimc_is_device_ischain *device,
 
 	if (!setfile_addr) {
 		merr("setfile address is NULL", device);
-		pr_err("cmd : %08X\n", readl(&itf->com_regs->ihcmd));
-		pr_err("id : %08X\n", readl(&itf->com_regs->ihc_stream));
-		pr_err("param1 : %08X\n", readl(&itf->com_regs->ihc_param1));
-		pr_err("param2 : %08X\n", readl(&itf->com_regs->ihc_param2));
-		pr_err("param3 : %08X\n", readl(&itf->com_regs->ihc_param3));
-		pr_err("param4 : %08X\n", readl(&itf->com_regs->ihc_param4));
+		err("cmd : %08X", readl(&itf->com_regs->ihcmd));
+		err("id : %08X", readl(&itf->com_regs->ihc_stream));
+		err("param1 : %08X", readl(&itf->com_regs->ihc_param1));
+		err("param2 : %08X", readl(&itf->com_regs->ihc_param2));
+		err("param3 : %08X", readl(&itf->com_regs->ihc_param3));
+		err("param4 : %08X", readl(&itf->com_regs->ihc_param4));
 		goto p_err;
 	}
 
@@ -1741,7 +1730,7 @@ int fimc_is_itf_stream_on(struct fimc_is_device_ischain *device)
 	struct fimc_is_groupmgr *groupmgr;
 	struct fimc_is_group *group_leader;
 	struct fimc_is_resourcemgr *resourcemgr;
-	u32 scount, async_shots;
+	u32 scount, init_shots;
 
 	BUG_ON(!device);
 	BUG_ON(!device->groupmgr);
@@ -1759,10 +1748,10 @@ int fimc_is_itf_stream_on(struct fimc_is_device_ischain *device)
 		goto p_err;
 	}
 
-	async_shots = group_leader->async_shots;
+	init_shots = group_leader->init_shots;
 	scount = atomic_read(&group_leader->scount);
 
-	if (test_bit(FIMC_IS_GROUP_OTF_INPUT, &group_leader->state)) {
+	if (init_shots) {
 		/* 3ax  group should be started */
 		if (!test_bit(FIMC_IS_GROUP_START, &group_leader->state)) {
 			merr("stream leader is NOT started", device);
@@ -1770,16 +1759,16 @@ int fimc_is_itf_stream_on(struct fimc_is_device_ischain *device)
 			goto p_err;
 		}
 
-		while (--retry && (scount < async_shots)) {
+		while (--retry && (scount < init_shots)) {
 			udelay(100);
 			scount = atomic_read(&group_leader->scount);
 		}
 	}
 
 	if (retry)
-		minfo("[ISC:D] stream on ready(%d, %d)\n", device, scount, async_shots);
+		minfo("[ISC:D] stream on ready(%d, %d)\n", device, scount, init_shots);
 	else
-		merr("[ISC:D] stream on NOT ready(%d, %d)\n", device, scount, async_shots);
+		merr("[ISC:D] stream on NOT ready(%d, %d)\n", device, scount, init_shots);
 
 #ifdef ENABLE_DVFS
 	if ((!pm_qos_request_active(&device->user_qos)) && (sysfs_debug.en_dvfs)) {
@@ -3611,11 +3600,7 @@ static int fimc_is_ischain_start(struct fimc_is_device_ischain *device)
 	if (test_bit(FIMC_IS_ISCHAIN_OPEN_STREAM, &device->state))
 		fimc_is_itf_sensor_mode(device);
 
-#ifdef CONFIG_ENABLE_HAL3_2_META_INTERFACE
 	if (device->sensor->scene_mode >= AA_SCENE_MODE_DISABLED)
-#else
-	if (device->sensor->scene_mode >= AA_SCENE_MODE_UNSUPPORTED)
-#endif
 		device->is_region->parameter.taa.vdma1_input.scene_mode = device->sensor->scene_mode;
 
 	lindex = 0xFFFFFFFF;
@@ -6881,17 +6866,11 @@ static int fimc_is_ischain_3aa_shot(struct fimc_is_device_ischain *device,
 		set_bit(FRAME_MAP_MEM, &frame->memory);
 	}
 
-#ifdef CONFIG_ENABLE_HAL3_2_META_INTERFACE
 	frame->shot->ctl.vendor_entry.lowIndexParam = 0;
 	frame->shot->ctl.vendor_entry.highIndexParam = 0;
 	frame->shot->dm.vendor_entry.lowIndexParam = 0;
 	frame->shot->dm.vendor_entry.highIndexParam = 0;
-#else
-	frame->shot->ctl.entry.lowIndexParam = 0;
-	frame->shot->ctl.entry.highIndexParam = 0;
-	frame->shot->dm.entry.lowIndexParam = 0;
-	frame->shot->dm.entry.highIndexParam = 0;
-#endif
+
 	node_group = &frame->shot_ext->node_group;
 
 	PROGRAM_COUNT(8);
@@ -7071,17 +7050,11 @@ static int fimc_is_ischain_isp_shot(struct fimc_is_device_ischain *device,
 		set_bit(FRAME_MAP_MEM, &frame->memory);
 	}
 
-#ifdef CONFIG_ENABLE_HAL3_2_META_INTERFACE
 	frame->shot->ctl.vendor_entry.lowIndexParam = 0;
 	frame->shot->ctl.vendor_entry.highIndexParam = 0;
 	frame->shot->dm.vendor_entry.lowIndexParam = 0;
 	frame->shot->dm.vendor_entry.highIndexParam = 0;
-#else
-	frame->shot->ctl.entry.lowIndexParam = 0;
-	frame->shot->ctl.entry.highIndexParam = 0;
-	frame->shot->dm.entry.lowIndexParam = 0;
-	frame->shot->dm.entry.highIndexParam = 0;
-#endif
+
 	node_group = &frame->shot_ext->node_group;
 
 	PROGRAM_COUNT(8);
@@ -7225,17 +7198,11 @@ static int fimc_is_ischain_dis_shot(struct fimc_is_device_ischain *device,
 		set_bit(FRAME_MAP_MEM, &frame->memory);
 	}
 
-#ifdef CONFIG_ENABLE_HAL3_2_META_INTERFACE
 	frame->shot->ctl.vendor_entry.lowIndexParam = 0;
 	frame->shot->ctl.vendor_entry.highIndexParam = 0;
 	frame->shot->dm.vendor_entry.lowIndexParam = 0;
 	frame->shot->dm.vendor_entry.highIndexParam = 0;
-#else
-	frame->shot->ctl.entry.lowIndexParam = 0;
-	frame->shot->ctl.entry.highIndexParam = 0;
-	frame->shot->dm.entry.lowIndexParam = 0;
-	frame->shot->dm.entry.highIndexParam = 0;
-#endif
+
 	node_group = &frame->shot_ext->node_group;
 
 	PROGRAM_COUNT(8);

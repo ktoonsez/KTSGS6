@@ -13,12 +13,7 @@
 
 #ifndef FIMC_IS_INTERFACE_H
 #define FIMC_IS_INTERFACE_H
-
-#ifdef CONFIG_ENABLE_HAL3_2_META_INTERFACE
 #include "fimc-is-metadata.h"
-#else
-#include "fimc-is-metadata-legacy.h"
-#endif
 #include "fimc-is-framemgr.h"
 #include "fimc-is-video.h"
 #include "fimc-is-time.h"

@@ -2596,6 +2596,9 @@ rebalance:
 					goto nopage;
 			}
 
+#ifdef CONFIG_SEC_OOM_KILLER
+			start_tick = jiffies;
+#endif
 			goto restart;
 		}
 	}

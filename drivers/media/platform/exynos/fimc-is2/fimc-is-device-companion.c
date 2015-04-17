@@ -531,7 +531,7 @@ static int fimc_is_companion_gpio_off(struct fimc_is_device_companion *device)
 		} else if (enable == GPIO_SCENARIO_OFF) {
 			SET_SENSOR_STATE(device->pdata->standby_state, SENSOR_STATE_COMPANION, SENSOR_STATE_OFF);
 		}
-		pr_info("%s: COMPANION STATE %u", __func__, GET_SENSOR_STATE(device->pdata->standby_state, SENSOR_STATE_COMPANION));
+		info("%s: COMPANION STATE %u\n", __func__, GET_SENSOR_STATE(device->pdata->standby_state, SENSOR_STATE_COMPANION));
 	}
 #endif
 
@@ -702,7 +702,7 @@ static int fimc_is_companion_probe(struct platform_device *pdev)
 
 #ifdef CONFIG_COMPANION_STANDBY_USE
 	SET_SENSOR_STATE(pdata->standby_state, SENSOR_STATE_COMPANION, SENSOR_STATE_OFF);
-	pr_info("%s: COMPANION STATE %u", __func__, GET_SENSOR_STATE(pdata->standby_state, SENSOR_STATE_COMPANION));
+	info("%s: COMPANION STATE %u\n", __func__, GET_SENSOR_STATE(pdata->standby_state, SENSOR_STATE_COMPANION));
 #endif
 
 	/* init state */
@@ -951,12 +951,12 @@ int fimc_is_companion_s_input(struct fimc_is_device_companion *device,
 		} else {
 			ret = fimc_is_comp_retention(core);
 			if (ret == -EINVAL) {
-				pr_info("companion restart..\n");
+				info("companion restart..\n");
 				ret = fimc_is_comp_loadfirm(core);
 			}
 		}
 		SET_SENSOR_STATE(pdata->standby_state, SENSOR_STATE_COMPANION, SENSOR_STATE_ON);
-		pr_info("%s: COMPANION STATE %u", __func__, GET_SENSOR_STATE(pdata->standby_state, SENSOR_STATE_COMPANION));
+		info("%s: COMPANION STATE %u\n", __func__, GET_SENSOR_STATE(pdata->standby_state, SENSOR_STATE_COMPANION));
 #else
 		ret = fimc_is_comp_loadfirm(core);
 #endif

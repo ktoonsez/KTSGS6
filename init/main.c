@@ -423,7 +423,7 @@ static int __init do_early_param(char *param, char *val, const char *unused)
 				pr_info("Security Boot Mode \n");
 				boot_mode_security = 1;
 #ifdef CONFIG_RKP_KDP
-				rkp_cred_enable = 0;
+				rkp_cred_enable = 1;
 #endif /*CONFIG_RKP_KDP*/
 			}
 	}

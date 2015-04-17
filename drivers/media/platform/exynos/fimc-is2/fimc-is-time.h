@@ -63,8 +63,9 @@ struct fimc_is_time {
 
 void TIME_STR1(void);
 void TIME_END1(void);
-uint64_t fimc_is_get_timestamp(void);
-uint64_t fimc_is_get_timestamp_boot(void);
+void fimc_is_jitter(u64 timestamp);
+u64 fimc_is_get_timestamp(void);
+u64 fimc_is_get_timestamp_boot(void);
 #define PROGRAM_COUNT(count) monitor_point(group, frame, count)
 void monitor_point(void *group_data, void *frame_data, u32 mpoint);
 

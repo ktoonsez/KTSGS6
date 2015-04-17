@@ -24,10 +24,11 @@
 #define CALIBRATION_FILE_PATH	"/efs/FactoryApp/calibration_data"
 #define CALIBRATION_DATA_AMOUNT	20
 
-#define MAX_ACCEL_1G	16384
-#define MAX_ACCEL_2G	32767
-#define MIN_ACCEL_2G	-32768
-#define MAX_ACCEL_4G	65536
+/* accel range : 4g */
+#define MAX_ACCEL_1G		8192
+#define MAX_ACCEL_2G		16384
+#define MIN_ACCEL_2G		-16383
+#define MAX_ACCEL_4G		32768
 
 static ssize_t accel_vendor_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -417,7 +418,6 @@ static ssize_t accel_lowpassfilter_store(struct device *dev,
 exit:
 	return size;
 }
-
 
 static DEVICE_ATTR(name, S_IRUGO, accel_name_show, NULL);
 static DEVICE_ATTR(vendor, S_IRUGO, accel_vendor_show, NULL);

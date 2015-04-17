@@ -27,6 +27,11 @@ static void ssp_late_resume(struct early_suspend *handler);
 #endif
 #define NORMAL_SENSOR_STATE_K	0x3FEFF
 
+#if defined(CONFIG_MUIC_NOTIFIER)
+#include <linux/muic/muic.h>
+#include <linux/muic/muic_notifier.h>
+#endif
+
 unsigned int bootmode;
 EXPORT_SYMBOL(bootmode);
 static int __init bootmode_setup(char *str)
@@ -286,6 +291,38 @@ dt_exit:
 	return errorno;
 }
 
+#if defined(CONFIG_MUIC_NOTIFIER)
+static int exynos_cpuidle_muic_notifier(struct notifier_block *nb,
+				unsigned long action, void *data)
+{
+	struct ssp_data *ssp_data;
+	muic_attached_dev_t attached_dev = *(muic_attached_dev_t *)data;
+
+	ssp_data = container_of(nb, struct ssp_data, cpuidle_muic_nb);
+
+	switch (attached_dev) {
+	case ATTACHED_DEV_JIG_UART_OFF_MUIC:
+	case ATTACHED_DEV_JIG_UART_OFF_VB_MUIC:
+	case ATTACHED_DEV_JIG_UART_OFF_VB_OTG_MUIC:
+	case ATTACHED_DEV_JIG_UART_OFF_VB_FG_MUIC:
+	case ATTACHED_DEV_JIG_UART_ON_MUIC:
+		if (action == MUIC_NOTIFY_CMD_DETACH)
+			ssp_data->jig_is_attached = false;
+		else if (action == MUIC_NOTIFY_CMD_ATTACH)
+			ssp_data->jig_is_attached = true;
+		else
+			pr_err("[SSP] %s: ACTION Error!\n", __func__);
+		break;
+	default:
+		break;
+	}
+
+	pr_info("[SSP] %s: dev=%d, action=%lu\n", __func__, attached_dev, action);
+
+	return NOTIFY_DONE;
+}
+#endif
+
 static int ssp_probe(struct spi_device *spi)
 {
 	struct ssp_data *data;
@@ -409,6 +446,11 @@ static int ssp_probe(struct spi_device *spi)
 	data->early_suspend.suspend = ssp_early_suspend;
 	data->early_suspend.resume = ssp_late_resume;
 	register_early_suspend(&data->early_suspend);
+#endif
+
+#if defined(CONFIG_MUIC_NOTIFIER)
+	muic_notifier_register(&data->cpuidle_muic_nb,
+		exynos_cpuidle_muic_notifier, MUIC_NOTIFY_DEV_CPUIDLE);
 #endif
 
 	pr_info("[SSP]: %s - probe success!\n", __func__);

@@ -506,6 +506,17 @@ static int exynos_lli_intr_enable(struct mipi_lli *lli)
 	return 0;
 }
 
+static int exynos_lli_intr_disable(struct mipi_lli *lli)
+{
+	if (mipi_lli_suspended())
+		return -1;
+
+	if((atomic_read(&lli->state) != LLI_UNMOUNTED) && lli->is_clk_enabled)
+		writel(0x0, lli->regs + EXYNOS_DME_LLI_INTR_ENABLE);
+
+	return 0;
+}
+
 static int exynos_lli_mask_sb_intr(struct mipi_lli *lli, bool flag)
 {
 	spin_lock(&lli->lock);
@@ -671,6 +682,7 @@ const struct lli_driver exynos_lli_driver = {
 	.loopback_test = exynos_lli_loopback_test,
 	.debug_info = exynos_lli_debug_info,
 	.intr_enable = exynos_lli_intr_enable,
+	.intr_disable = exynos_lli_intr_disable,
 	.mask_sb_intr = exynos_lli_mask_sb_intr,
 	.suspend = exynos_lli_suspend,
 	.resume = exynos_lli_resume,

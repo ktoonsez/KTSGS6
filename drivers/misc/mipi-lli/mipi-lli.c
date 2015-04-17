@@ -345,6 +345,18 @@ void mipi_lli_intr_enable(void)
 EXPORT_SYMBOL(mipi_lli_intr_enable);
 
 /**
+ * mipi_lli_intr_disable
+ */
+void mipi_lli_intr_disable(void)
+{
+	if (!g_lli || !g_lli->driver || !g_lli->driver->intr_disable)
+		return;
+
+	g_lli->driver->intr_disable(g_lli);
+}
+EXPORT_SYMBOL(mipi_lli_intr_disable);
+
+/**
  * mipi_lli_mask_sb_intr
  */
 void mipi_lli_mask_sb_intr(bool flag)

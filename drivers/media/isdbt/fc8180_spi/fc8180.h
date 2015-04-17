@@ -48,7 +48,7 @@ struct ioctl_info {
 };
 
 
-#define IOCTL_MAXNR                     25
+#define IOCTL_MAXNR                     29
 
 #define IOCTL_ISDBT_RESET	\
 	_IO(IOCTL_MAGIC, 0)
@@ -109,6 +109,8 @@ struct ioctl_info {
 #define IOCTL_ISDBT_POWER_OFF	\
 	_IO(IOCTL_MAGIC, 24)
 
+#define IOCTL_ISDBT_RF_BER \
+	_IOW(IOCTL_MAGIC, 28, struct ioctl_info)
 
 struct ISDBT_OPEN_INFO_T {
 	HANDLE				*hInit;

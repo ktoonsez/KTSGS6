@@ -420,6 +420,7 @@ typedef struct mhi_flags {
 	atomic_t m0_work_enabled;
 	atomic_t m3_work_enabled;
 	atomic_t pending_resume;
+	atomic_t cp_m1_state;
 	volatile int stop_threads;
 	u32 ssr;
 } mhi_flags;

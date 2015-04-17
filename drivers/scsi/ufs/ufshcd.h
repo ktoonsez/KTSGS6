@@ -74,10 +74,6 @@
 
 #define UFS_UNIQUE_NUMBER_LEN 17 /* manufacturer date 4 bytes + serial number 12 bytes + null */
 
-#ifdef UFS_SEC_READ_DEBUG_INFO
-#define READ_DEBUG_LENGTH_IN_4BYTE_UNIT 16420
-#endif
-
 struct ufs_hba;
 
 enum dev_cmd_type {
@@ -416,11 +412,6 @@ struct ufs_hba {
 	dma_addr_t utrdl_dma_addr;
 	dma_addr_t utmrdl_dma_addr;
 
-#ifdef UFS_SEC_READ_DEBUG_INFO
-		u32 debug_info_default[READ_DEBUG_LENGTH_IN_4BYTE_UNIT];
-		u32 debug_info_extra[READ_DEBUG_LENGTH_IN_4BYTE_UNIT];
-#endif
-
 	struct Scsi_Host *host;
 	struct device *dev;
 	/*
@@ -457,9 +448,6 @@ struct ufs_hba {
 	unsigned long tm_condition;
 	unsigned long tm_slots_in_use;
 
-#ifdef UFS_SEC_READ_DEBUG_INFO
-	bool block_hibern8;
-#endif
 	struct uic_command *active_uic_cmd;
 	struct mutex uic_cmd_mutex;
 	struct completion *uic_async_done;

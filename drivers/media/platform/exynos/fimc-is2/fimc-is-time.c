@@ -22,6 +22,11 @@
 
 static struct timeval itime1;
 
+#define JITTER_CNT 50
+static u64 jitter_array[JITTER_CNT];
+static u64 jitter_prio;
+static u64 jitter_cnt = 0;
+
 void TIME_STR1(void)
 {
 	do_gettimeofday(&itime1);
@@ -39,22 +44,52 @@ void TIME_END1(void)
 	pr_info("TIME_MEASURE : %dus\n", time);
 }
 
-uint64_t fimc_is_get_timestamp(void)
+void fimc_is_jitter(u64 timestamp)
+{
+	if (jitter_cnt == 0) {
+		jitter_prio = timestamp;
+		jitter_cnt++;
+		return;
+	}
+
+	jitter_array[jitter_cnt-1] = timestamp - jitter_prio;
+	jitter_prio = timestamp;
+
+	if (jitter_cnt >= JITTER_CNT) {
+		u64 i, variance, tot = 0, square_tot = 0, avg = 0, square_avg = 0;;
+
+		for (i = 0; i < JITTER_CNT; ++i) {
+			tot += jitter_array[i];
+			square_tot += (jitter_array[i] * jitter_array[i]);
+		}
+
+		avg = tot / JITTER_CNT;
+		square_avg = square_tot / JITTER_CNT;
+		variance = square_avg - (avg * avg);
+
+		info("[TIM] variance : %lld, average : %lld\n", variance, avg);
+		jitter_cnt = 0;
+	} else {
+		jitter_cnt++;
+	}
+}
+
+u64 fimc_is_get_timestamp(void)
 {
 	struct timespec curtime;
 
 	do_posix_clock_monotonic_gettime(&curtime);
 
-	return (uint64_t)curtime.tv_sec*1000000000 + curtime.tv_nsec;
+	return (u64)curtime.tv_sec*1000000000 + curtime.tv_nsec;
 }
 
-uint64_t fimc_is_get_timestamp_boot(void)
+u64 fimc_is_get_timestamp_boot(void)
 {
 	struct timespec curtime;
 
 	curtime = ktime_to_timespec(ktime_get_boottime());
 
-	return (uint64_t)curtime.tv_sec*1000000000 + curtime.tv_nsec;
+	return (u64)curtime.tv_sec*1000000000 + curtime.tv_nsec;
 }
 
 static inline u32 fimc_is_get_time(struct timeval *str, struct timeval *end)

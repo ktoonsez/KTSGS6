@@ -108,3 +108,11 @@ config SEC_PM_DEBUG
 	depends on SEC_PM
 	help
 	  Enable Samsung TN Power management debug support.
+
+config USER_RESET_DEBUG
+	bool "USER RESET debug feature"
+	default n
+	help
+	  This option enables debugging log for User Reset.
+	  This option provides reset history log in user version.
+	  This option enable proc/reset_reason support

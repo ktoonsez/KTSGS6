@@ -163,7 +163,7 @@ int fimc_is_ois_i2c_write(struct i2c_client *client ,u16 addr, u8 data)
         buf[2] = data;
 
 #if 0
-        pr_info("%s : W(0x%02X%02X %02X)\n",__func__, buf[0], buf[1], buf[2]);
+        info("%s : W(0x%02X%02X %02X)\n",__func__, buf[0], buf[1], buf[2]);
 #endif
 
         do {
@@ -209,7 +209,7 @@ int fimc_is_ois_i2c_write_multi(struct i2c_client *client ,u16 addr, u8 *data, s
 	        buf[i + 2] = *(data + i);
 	}
 #if 0
-        pr_info("OISLOG %s : W(0x%02X%02X%02X)\n", __func__, buf[0], buf[1], buf[2]);
+        info("OISLOG %s : W(0x%02X%02X%02X)\n", __func__, buf[0], buf[1], buf[2]);
 #endif
         do {
                 ret = i2c_transfer(client->adapter, &msg, 1);
@@ -255,7 +255,7 @@ static int fimc_is_ois_i2c_read_multi(struct i2c_client *client, u16 addr, u8 *d
 
 	err = i2c_transfer(client->adapter, msg, 2);
 	if (unlikely(err != 2)) {
-		pr_err("%s: register read fail\n", __func__);
+		err("%s: register read fail", __func__);
 		return -EIO;
 	}
 
@@ -318,11 +318,10 @@ int fimc_is_ois_gpio_on(struct fimc_is_core *core)
 
 	for (i = 0; i < FIMC_IS_SENSOR_COUNT; i++) {
 		fimc_is_search_sensor_module(&core->sensor[i], sensor_id, &module);
-		
 		if (module)
 			break;
 		else {
-			pr_err("%s: Could not find sensor id.", __func__);				
+			err("%s: Could not find sensor id.", __func__);
 			ret = -EINVAL;
 			goto p_err;
 		}
@@ -358,11 +357,10 @@ int fimc_is_ois_gpio_off(struct fimc_is_core *core)
 
 	for (i = 0; i < FIMC_IS_SENSOR_COUNT; i++) {
 		fimc_is_search_sensor_module(&core->sensor[i], sensor_id, &module);
-		
 		if (module)
 			break;
 		else {
-			pr_err("%s: Could not find sensor id.", __func__);				
+			err("%s: Could not find sensor id.", __func__);
 			ret = -EINVAL;
 			goto p_err;
 		}
@@ -397,7 +395,7 @@ void fimc_is_ois_enable(struct fimc_is_core *core)
 		return;
 	}
 
-	pr_info("%s : E\n", __FUNCTION__);
+	info("%s : E\n", __FUNCTION__);
 	if (core_pdata->use_ois_hsi2c) {
 	    fimc_is_ois_i2c_config(core->client1, true);
 	}
@@ -415,7 +413,7 @@ void fimc_is_ois_enable(struct fimc_is_core *core)
 	if (core_pdata->use_ois_hsi2c) {
 	    fimc_is_ois_i2c_config(core->client1, false);
 	}
-	pr_info("%s : X\n", __FUNCTION__);
+	info("%s : X\n", __FUNCTION__);
 }
 
 int fimc_is_ois_sine_mode(struct fimc_is_core *core, int mode)
@@ -429,7 +427,7 @@ int fimc_is_ois_sine_mode(struct fimc_is_core *core, int mode)
 		return -EINVAL;
 	}
 
-	pr_info("%s : E\n", __FUNCTION__);
+	info("%s : E\n", __FUNCTION__);
 	if (core_pdata->use_ois_hsi2c) {
 		fimc_is_ois_i2c_config(core->client1, true);
 	}
@@ -468,7 +466,7 @@ int fimc_is_ois_sine_mode(struct fimc_is_core *core, int mode)
 	if (core_pdata->use_ois_hsi2c) {
 		fimc_is_ois_i2c_config(core->client1, false);
 	}
-	pr_info("%s : X\n", __FUNCTION__);
+	info("%s : X\n", __FUNCTION__);
 
 	return ret;
 }
@@ -506,7 +504,7 @@ void fimc_is_ois_version(struct fimc_is_core *core)
 	}
 
 	version = (val_d << 8) | val_c;
-	pr_info("OIS version = 0x%04x\n", version);
+	info("OIS version = 0x%04x\n", version);
 }
 
 void fimc_is_ois_offset_test(struct fimc_is_core *core, long *raw_data_x, long *raw_data_y)
@@ -523,7 +521,7 @@ void fimc_is_ois_offset_test(struct fimc_is_core *core, long *raw_data_x, long *
 		return;
 	}
 
-	pr_info("%s : E\n", __FUNCTION__);
+	info("%s : E\n", __FUNCTION__);
 	if (core_pdata->use_ois_hsi2c) {
 	    fimc_is_ois_i2c_config(core->client1, true);
 	}
@@ -580,7 +578,7 @@ void fimc_is_ois_offset_test(struct fimc_is_core *core, long *raw_data_x, long *
 	}
 
 	fimc_is_ois_version(core);
-	pr_info("%s : X\n", __FUNCTION__);
+	info("%s : X\n", __FUNCTION__);
 	return;
 }
 
@@ -598,7 +596,7 @@ void fimc_is_ois_get_offset_data(struct fimc_is_core *core, long *raw_data_x, lo
 		return;
 	}
 
-	pr_info("%s : E\n", __FUNCTION__);
+	info("%s : E\n", __FUNCTION__);
 	if (core_pdata->use_ois_hsi2c) {
 	    fimc_is_ois_i2c_config(core->client1, true);
 	}
@@ -637,7 +635,7 @@ void fimc_is_ois_get_offset_data(struct fimc_is_core *core, long *raw_data_x, lo
 	}
 
 	fimc_is_ois_version(core);
-	pr_info("%s : X\n", __FUNCTION__);
+	info("%s : X\n", __FUNCTION__);
 	return;
 }
 
@@ -654,7 +652,7 @@ int fimc_is_ois_self_test(struct fimc_is_core *core)
 		return -EINVAL;
 	}
 
-	pr_info("%s : E\n", __FUNCTION__);
+	info("%s : E\n", __FUNCTION__);
 	if (core_pdata->use_ois_hsi2c) {
 	    fimc_is_ois_i2c_config(core->client1, true);
 	}
@@ -686,7 +684,7 @@ int fimc_is_ois_self_test(struct fimc_is_core *core)
 	    fimc_is_ois_i2c_config(core->client1, false);
 	}
 
-	pr_info("%s(%d) : X\n", __FUNCTION__, val);
+	info("%s(%d) : X\n", __FUNCTION__, val);
 	return (int)val;
 }
 
@@ -710,7 +708,7 @@ bool fimc_is_ois_diff_test(struct fimc_is_core *core, int *x_diff, int *y_diff)
 	msleep(30);
 #endif
 
-	pr_info("(%s) : E\n", __FUNCTION__);
+	info("(%s) : E\n", __FUNCTION__);
 	if (core_pdata->use_ois_hsi2c) {
 		fimc_is_ois_i2c_config(core->client1, true);
 	}
@@ -1213,13 +1211,13 @@ int fimc_is_ois_open_fw(struct fimc_is_core *core, char *name, u8 **buf)
 	snprintf(fw_name, sizeof(fw_name), "%s%s", FIMC_IS_OIS_SDCARD_PATH, name);
 	fp = filp_open(fw_name, O_RDONLY, 0);
 	if (IS_ERR_OR_NULL(fp)) {
-		info("failed to open SDCARD fw!!!");
+		info("failed to open SDCARD fw!!!\n");
 		goto request_fw;
 	}
 
 	fw_requested = 0;
 	size = fp->f_path.dentry->d_inode->i_size;
-	pr_info("start read sdcard, file path %s, size %lu Bytes\n", fw_name, size);
+	info("start read sdcard, file path %s, size %lu Bytes\n", fw_name, size);
 
 	*buf = vmalloc(size);
 	if (!(*buf)) {
@@ -1289,7 +1287,7 @@ request_fw:
 			not_crc_bin = true;
 			err("ois fw binary size = %lu.\n", size);
 		}
-		pr_info("OIS firmware is loaded from Phone binary.\n");
+		info("OIS firmware is loaded from Phone binary.\n");
 	}
 
 p_err:
@@ -1425,7 +1423,7 @@ bool fimc_is_ois_crc_check(struct fimc_is_core *core, char *buf)
 	memcpy(check_8, buf + OIS_BIN_LEN, 4);
 	checksum_bin = (check_8[3] << 24) | (check_8[2] << 16) | (check_8[1] << 8) | (check_8[0]);
 
-	checksum = (u32)getCRC((u16 *)&buf32[0], OIS_BIN_LEN / 2, NULL, NULL);
+	checksum = (u32)getCRC((u16 *)&buf32[0], OIS_BIN_LEN, NULL, NULL);
 	if (checksum != checksum_bin) {
 		return false;
 	} else {
@@ -1624,7 +1622,7 @@ retry:
 
 		if (RcvDataShort == 0x0000) {
 			/* F/W Update Success Process */
-			info("%s: OISLOG OIS program update success", __func__);
+			info("%s: OISLOG OIS program update success\n", __func__);
 		} else {
 			/* Retry Process */
 			if (retry_count > 0) {
@@ -1719,7 +1717,7 @@ int fimc_is_ois_thread(void *data)
 
 void fimc_is_ois_init_thread(struct fimc_is_core *core)
 {
-	pr_info("OIS fimc_is_ois_init_thread\n");
+	info("OIS fimc_is_ois_init_thread\n");
 
 	ois_ts = kthread_run(fimc_is_ois_thread, core, "ois_thread");
 	if (IS_ERR_OR_NULL(ois_ts))

@@ -1529,6 +1529,9 @@ static int calc_ttf(struct max77843_fuelgauge_data *fuelgauge, union power_suppl
 	struct cv_slope *cv_data = fuelgauge->cv_data;
 	int design_cap = fuelgauge->battery_data->Capacity / 2;
 
+        if (fuelgauge->battery_data->Capacity == 0x1438 && val->intval >= 2500) // for Flat model and AFC
+                design_cap = 2332;
+
 	if(!cv_data || (val->intval <= 0)) {
 		pr_info("%s: no cv_data or val: %d\n", __func__, val->intval);
 		return -1;
@@ -1567,9 +1570,13 @@ static int calc_ttf(struct max77843_fuelgauge_data *fuelgauge, union power_suppl
 		}
 	}
 
-	pr_debug("%s: soc: %4d, T: %6d, now: %4d, avg: %4d, cv soc: %4d, i: %4d, val: %d, %s\n",
-	 __func__, soc,	cv_data[i].time + cc_time, current_now, current_avg, cv_data[i].soc, i, val->intval, chg_val2.strval);
-	return cv_data[i].time + cc_time + 60; //minimum 1minutes
+        pr_debug("%s: cap: %d, soc: %4d, T: %6d, now: %4d, avg: %4d, cv soc: %4d, i: %4d, val: %d, %s\n",
+         __func__, design_cap, soc, cv_data[i].time + cc_time, current_now, current_avg, cv_data[i].soc, i, val->intval, chg_val2.strval);
+
+        if (cv_data[i].time + cc_time >= 60)
+                return cv_data[i].time + cc_time;
+        else
+                return 60; //minimum 1minutes
 }
 
 static int max77843_fg_get_property(struct power_supply *psy,

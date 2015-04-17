@@ -349,6 +349,7 @@ ipc_bridge_write(struct platform_device *pdev, char *buf, unsigned int count)
 	struct ipc_bridge *dev = __ipc_bridge_dev;
 	int ret;
 	int wait_ret;
+	static int busy_cnt = 0;
 
 	if (dev->pdev != pdev)
 		return -EINVAL;
@@ -377,8 +378,16 @@ ipc_bridge_write(struct platform_device *pdev, char *buf, unsigned int count)
 	if (ret < 0) {
 		dev_err(&dev->intf->dev, "write urb submit err %d\n", ret);
 		usb_autopm_put_interface_async(dev->intf);
+		busy_cnt++;
+		if (busy_cnt > 1 && ret == -16) {
+			dev_err(&dev->intf->dev, "use_count %d, pm_usage_cnt %d, rpm_status %d\n",
+				atomic_read(&dev->writeurb->use_count),
+				atomic_read(&dev->intf->pm_usage_cnt),
+				dev->inturb->dev->dev.power.runtime_status);
+		}
 		goto done;
 	}
+	busy_cnt = 0;
 	dev->snd_encap_cmd++;
  	wait_ret = wait_for_completion_timeout(&dev->write_done, msecs_to_jiffies(5000));
 	if(wait_ret == 0){

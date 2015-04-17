@@ -108,6 +108,7 @@ static int fts_stop_device(struct fts_ts_info *info);
 static int fts_start_device(struct fts_ts_info *info);
 static int fts_irq_enable(struct fts_ts_info *info, bool enable);
 static void fts_reset_work(struct work_struct *work);
+void fts_recovery_cx(struct fts_ts_info *info);
 void fts_release_all_finger(struct fts_ts_info *info);
 
 #ifdef CONFIG_SEC_DEBUG_TSP_LOG
@@ -442,6 +443,19 @@ static int fts_read_chip_id(struct fts_ts_info *info) {
 
 	tsp_debug_info(true, &info->client->dev, "FTS %02X%02X%02X =  %02X %02X %02X %02X %02X %02X\n",
 	       regAdd[0], regAdd[1], regAdd[2], val[1], val[2], val[3], val[4], val[5], val[6]);
+
+	if(val[1] == FTS_ID0 && val[2] == FTS_ID2)
+	{
+		if(val[4] == 0x00 && val[5] == 0x00)	 // 00 39 6C 03 00 00
+		{
+			// Cx Corruption
+			fts_recovery_cx(info);
+		}
+		else
+		{
+			tsp_debug_info(true, &info->client->dev,"FTS Chip ID : %02X %02X\n", val[1], val[2]);
+		}
+	}
 
 	if (val[1] != FTS_ID0)
 		return -FTS_ERROR_INVALID_CHIP_ID;
@@ -2679,6 +2693,51 @@ static void fts_shutdown(struct i2c_client *client)
 	 if (info->board->led_power)
 		 info->board->led_power(info, false);
 #endif
+}
+
+void fts_recovery_cx(struct fts_ts_info *info)
+{
+	unsigned char regAdd[4] = {0};
+	unsigned char buf[8] = {0};
+	unsigned char cnt = 100;
+
+	regAdd[0] = 0xB6;
+	regAdd[1] = 0x00;
+	regAdd[2] = 0x1E;
+	regAdd[3] = 0x08;
+	fts_write_reg(info,&regAdd[0], 4);		// Loading FW to PRAM  without CRC Check
+	fts_delay(30);
+
+
+	fts_command(info,CX_TUNNING);
+	fts_delay(300);
+
+	fts_command(info,FTS_CMD_SAVE_CX_TUNING);
+	fts_delay(200);
+
+	do
+	{
+		int ret;
+		regAdd[0] = READ_ONE_EVENT;
+		ret = fts_read_reg(info, regAdd, 1, &buf[0], FTS_EVENT_SIZE);
+
+		fts_delay(10);
+		if(cnt-- == 0) break;
+	}while(buf[0] != 0x16 || buf[1] != 0x04);
+
+
+	fts_command(info, SLEEPOUT);
+	fts_delay(50);
+
+	fts_command(info, SENSEON);
+	fts_delay(50);
+
+#ifdef FTS_SUPPORT_TOUCH_KEY
+	if (info->board->support_mskey)
+		fts_command(info, FTS_CMD_KEY_SENSE_ON);
+#endif
+
+	fts_command(info, FLUSHBUFFER);
 }
 
 #ifdef CONFIG_PM

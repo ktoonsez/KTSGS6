@@ -838,9 +838,9 @@ s32 fc8180_scan_status(HANDLE handle)
 		return BBM_NOK;
 
 	if (((0x70 & data) == 0x40) && ((0x1c & data1) == 0x18))
-		ts_err_free_timeout = 40;
+		ts_err_free_timeout = 80;
 	else
-		ts_err_free_timeout = 65;
+		ts_err_free_timeout = 105;
 
 	for (i = 0; i < ts_err_free_timeout; i++) {
 		bbm_read(handle, 0x5053, &data);

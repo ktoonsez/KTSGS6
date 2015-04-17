@@ -110,6 +110,23 @@ enum sec_debug_upload_magic_t {
 	UPLOAD_MAGIC_PANIC		= 0x66262564,
 };
 
+#ifdef CONFIG_USER_RESET_DEBUG
+enum sec_debug_reset_reason_t {
+	RR_S = 1,
+	RR_W = 2,
+	RR_D = 3,
+	RR_K = 4,
+	RR_M = 5,
+	RR_P = 6,
+	RR_R = 7,
+	RR_B = 8,
+	RR_N = 9,
+};
+
+static unsigned reset_reason = RR_N;
+module_param_named(reset_reason, reset_reason, uint, 0644);
+#endif
+
 enum sec_debug_upload_cause_t {
 	UPLOAD_CAUSE_INIT		= 0xCAFEBABE,
 	UPLOAD_CAUSE_KERNEL_PANIC	= 0x000000C8,
@@ -582,5 +599,59 @@ void sec_debug_check_crash_key(unsigned int code, int value)
 		}
 	}
 }
+
+#ifdef CONFIG_USER_RESET_DEBUG
+static int set_reset_reason_proc_show(struct seq_file *m, void *v)
+{
+	if (reset_reason == RR_S)
+		seq_printf(m, "SPON\n");
+	else if (reset_reason == RR_W)
+		seq_printf(m, "WPON\n");
+	else if (reset_reason == RR_D)
+		seq_printf(m, "DPON\n");
+	else if (reset_reason == RR_K)
+		seq_printf(m, "KPON\n");
+	else if (reset_reason == RR_M)
+		seq_printf(m, "MPON\n");
+	else if (reset_reason == RR_P)
+		seq_printf(m, "PPON\n");
+	else if (reset_reason == RR_R)
+		seq_printf(m, "RPON\n");
+	else if (reset_reason == RR_B)
+		seq_printf(m, "BPON\n");
+	else
+		seq_printf(m, "NPON\n");
+
+	return 0;
+}
+
+static int sec_reset_reason_proc_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, set_reset_reason_proc_show, NULL);
+}
+
+static const struct file_operations sec_reset_reason_proc_fops = {
+	.open = sec_reset_reason_proc_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
+
+static int __init sec_debug_reset_reason_init(void)
+{
+	struct proc_dir_entry *entry;
+
+	entry = proc_create("reset_reason", S_IWUGO, NULL,
+		&sec_reset_reason_proc_fops);
+
+	if (!entry)
+		return -ENOMEM;
+
+	return 0;
+}
+
+device_initcall(sec_debug_reset_reason_init);
+#endif
+
 
 #endif /* CONFIG_SEC_DEBUG */

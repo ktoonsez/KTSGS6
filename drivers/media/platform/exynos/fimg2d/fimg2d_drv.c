@@ -644,7 +644,11 @@ static long compat_fimg2d_ioctl32(struct file *file, unsigned int cmd,
 		}
 
 		stack_cursor += sizeof(*data);
-		memset(data, 0, sizeof(*data));
+		if (clear_user(data, sizeof(*data))) {
+			fimg2d_err("failed to access to userspace\n");
+			mmput(mm);
+			return -EPERM;
+		}
 
 		err = get_user(op, &data32->op);
 		err |= put_user(op, &data->op);

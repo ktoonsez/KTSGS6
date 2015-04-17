@@ -195,7 +195,7 @@ int fimc_is_sec_get_camid_from_hal(char *fw_name, char *setf_name)
 		snprintf(setf_name, sizeof(FIMC_IS_6B2_SETF), "%s", FIMC_IS_6B2_SETF);
 	}
 #else
-	pr_err("%s: waring, you're calling the disabled func!\n", __func__);
+	err("%s: waring, you're calling the disabled func!", __func__);
 #endif
 	return 0;
 }
@@ -243,7 +243,7 @@ u8 fimc_is_sec_compare_ver(int position)
 	if (from_ver == def_ver) {
 		return finfo->cal_map_ver[3];
 	} else {
-		pr_err("FROM core version is invalid. version is %c%c%c%c\n",
+		err("FROM core version is invalid. version is %c%c%c%c",
 			finfo->cal_map_ver[0], finfo->cal_map_ver[1], finfo->cal_map_ver[2], finfo->cal_map_ver[3]);
 		return 0;
 	}
@@ -997,7 +997,7 @@ int fimc_is_i2c_read(struct i2c_client *client, void *buf, u32 addr, size_t size
 	}
 
 	if (unlikely(ret <= 0)) {
-		pr_err("%s: error %d, fail to write 0x%04X\n", __func__, ret, addr);
+		err("%s: error %d, fail to write 0x%04X", __func__, ret, addr);
 		return ret ? ret : -ETIMEDOUT;
 	}
 
@@ -1012,7 +1012,7 @@ int fimc_is_i2c_read(struct i2c_client *client, void *buf, u32 addr, size_t size
 	}
 
 	if (unlikely(ret <= 0)) {
-		pr_err("%s: error %d, fail to read 0x%04X\n", __func__, ret, addr);
+		err("%s: error %d, fail to read 0x%04X", __func__, ret, addr);
 		return ret ? ret : -ETIMEDOUT;
 	}
 
@@ -1430,7 +1430,7 @@ int fimc_is_sec_readcal(struct fimc_is_core *core)
 
 	/* reset spi */
 	if (!core->spi0.device) {
-		pr_err("spi0 device is not available");
+		err("spi0 device is not available");
 		goto exit;
 	}
 
@@ -1623,7 +1623,7 @@ crc_retry:
 #endif
 
 	if (sysfs_finfo.setfile_end_addr < 0x8000 || sysfs_finfo.setfile_end_addr > 0x3fffff) {
-		info("setfile end_addr has error!!  0x%08x", sysfs_finfo.setfile_end_addr);
+		info("setfile end_addr has error!!  0x%08x\n", sysfs_finfo.setfile_end_addr);
 		sysfs_finfo.setfile_end_addr = 0x1fffff;
 	}
 
@@ -1956,14 +1956,14 @@ int fimc_is_sec_gpio_enable(struct exynos_platform_fimc_is *pdata, char *name, b
 	}
 
 	if (i == FIMC_IS_MAX_GPIO_NUM) {
-		pr_err("GPIO %s is not found!!\n", name);
+		err("GPIO %s is not found!!", name);
 		ret = -EINVAL;
 		goto exit;
 	}
 
 	ret = gpio_request(gpio->pin, gpio->name);
 	if (ret) {
-		pr_err("Request GPIO error(%s)\n", gpio->name);
+		err("Request GPIO error(%s)", gpio->name);
 		goto exit;
 	}
 
@@ -1989,7 +1989,7 @@ int fimc_is_sec_gpio_enable(struct exynos_platform_fimc_is *pdata, char *name, b
 			gpio_direction_output(gpio->pin, 1);
 			break;
 		default:
-			pr_err("unknown act for gpio\n");
+			err("unknown act for gpio");
 			break;
 		}
 	} else {
@@ -2023,7 +2023,7 @@ int fimc_is_sec_core_voltage_select(struct device *dev, char *header_ver)
 
 	regulator = regulator_get(dev, "cam_sensor_core_1.2v");
 	if (IS_ERR_OR_NULL(regulator)) {
-		pr_err("%s : regulator_get fail\n",
+		err("%s : regulator_get fail",
 			__func__);
 		return -EINVAL;
 	}
@@ -2069,7 +2069,7 @@ static int fimc_is_sec_ldo_enabled(struct device *dev, char *name) {
 
 	regulator = regulator_get(dev, name);
 	if (IS_ERR_OR_NULL(regulator)) {
-		pr_err("%s : regulator_get(%s) fail\n", __func__, name);
+		err("%s : regulator_get(%s) fail", __func__, name);
 		return -EINVAL;
 	}
 
@@ -2087,7 +2087,7 @@ int fimc_is_sec_ldo_enable(struct device *dev, char *name, bool on)
 
 	regulator = regulator_get(dev, name);
 	if (IS_ERR_OR_NULL(regulator)) {
-		pr_err("%s : regulator_get(%s) fail\n", __func__, name);
+		err("%s : regulator_get(%s) fail", __func__, name);
 		return -EINVAL;
 	}
 
@@ -2099,7 +2099,7 @@ int fimc_is_sec_ldo_enable(struct device *dev, char *name, bool on)
 
 		ret = regulator_enable(regulator);
 		if (ret) {
-			pr_err("%s : regulator_enable(%s) fail\n", __func__, name);
+			err("%s : regulator_enable(%s) fail", __func__, name);
 			goto exit;
 		}
 	} else {
@@ -2110,7 +2110,7 @@ int fimc_is_sec_ldo_enable(struct device *dev, char *name, bool on)
 
 		ret = regulator_disable(regulator);
 		if (ret) {
-			pr_err("%s : regulator_disable(%s) fail\n", __func__, name);
+			err("%s : regulator_disable(%s) fail", __func__, name);
 			goto exit;
 		}
 	}
@@ -2251,7 +2251,7 @@ p_err:
 		if (core_pdata->check_sensor_vendor) {
 			if (fimc_is_sec_check_from_ver(core, position)) {
 				if (sysfs_finfo.header_ver[3] != 'L') {
-					pr_err("Not supported module. Module ver = %s", sysfs_finfo.header_ver);
+					err("Not supported module. Module ver = %s", sysfs_finfo.header_ver);
 					return  -EIO;
 				}
 			}
@@ -2262,7 +2262,7 @@ p_err:
 		if (core_pdata->check_sensor_vendor) {
 			if (fimc_is_sec_check_from_ver(core, position)) {
 				if (sysfs_finfo_front.header_ver[3] != 'L') {
-					pr_err("Not supported front module. Module ver = %s", sysfs_finfo_front.header_ver);
+					err("Not supported front module. Module ver = %s", sysfs_finfo_front.header_ver);
 					return  -EIO;
 				}
 			}
@@ -2304,7 +2304,7 @@ int fimc_is_sec_fw_sel_eeprom(struct device *dev, int id, bool headerOnly)
 			if (!fimc_is_sec_ldo_enabled(dev, "VDDIO_1.8V_VT")) {
 				ret = fimc_is_sec_ldo_enable(dev, "VDDIO_1.8V_VT", true);
 				if (ret) {
-					pr_err("fimc_is_sec_fw_sel_eeprom: error, failed to VDDIO_1.8V_VT(on)");
+					err("fimc_is_sec_fw_sel_eeprom: error, failed to VDDIO_1.8V_VT(on)");
 					goto exit;
 				}
 				is_ldo_enabled[0] = true;
@@ -2313,7 +2313,7 @@ int fimc_is_sec_fw_sel_eeprom(struct device *dev, int id, bool headerOnly)
 			if (!fimc_is_sec_ldo_enabled(dev, "VDDIO_1.8V_CAM")) {
 				ret = fimc_is_sec_ldo_enable(dev, "VDDIO_1.8V_CAM", true);
 				if (ret) {
-					pr_err("fimc_is_sec_fw_sel_eeprom: error, failed to VDDIO_1.8V_CAM(on)");
+					err("fimc_is_sec_fw_sel_eeprom: error, failed to VDDIO_1.8V_CAM(on)");
 					goto exit;
 				}
 				is_ldo_enabled[1] = true;
@@ -2337,7 +2337,7 @@ int fimc_is_sec_fw_sel_eeprom(struct device *dev, int id, bool headerOnly)
 			if (!fimc_is_sec_ldo_enabled(dev, "VDDIO_1.8V_CAM")) {
 				ret = fimc_is_sec_ldo_enable(dev, "VDDIO_1.8V_CAM", true);
 				if (ret) {
-					pr_err("fimc_is_sec_fw_sel_eeprom: error, failed to VDDIO_1.8V_CAM(on)");
+					err("fimc_is_sec_fw_sel_eeprom: error, failed to VDDIO_1.8V_CAM(on)");
 					goto exit;
 				}
 				is_ldo_enabled[0] = true;
@@ -2369,7 +2369,7 @@ int fimc_is_sec_fw_sel_eeprom(struct device *dev, int id, bool headerOnly)
 
 	fp = filp_open(fw_path, O_RDONLY, 0);
 	if (IS_ERR(fp)) {
-		pr_err("Camera: Failed open phone firmware\n");
+		err("Camera: Failed open phone firmware");
 		ret = -EIO;
 		fp = NULL;
 		goto read_phone_fw_exit;
@@ -2382,7 +2382,7 @@ int fimc_is_sec_fw_sel_eeprom(struct device *dev, int id, bool headerOnly)
 		info("Phone FW size is larger than FW buffer. Use vmalloc.\n");
 		read_buf = vmalloc(fsize);
 		if (!read_buf) {
-			pr_err("failed to allocate memory\n");
+			err("failed to allocate memory");
 			ret = -ENOMEM;
 			goto read_phone_fw_exit;
 		}
@@ -2393,7 +2393,7 @@ int fimc_is_sec_fw_sel_eeprom(struct device *dev, int id, bool headerOnly)
 	}
 	nread = vfs_read(fp, (char __user *)temp_buf, fsize, &fp->f_pos);
 	if (nread != fsize) {
-		pr_err("failed to read firmware file, %ld Bytes\n", nread);
+		err("failed to read firmware file, %ld Bytes", nread);
 		ret = -EIO;
 		goto read_phone_fw_exit;
 	}
@@ -2422,12 +2422,12 @@ exit:
 		if (is_ldo_enabled[0] && !core->running_front_camera) {
 			ret = fimc_is_sec_ldo_enable(dev, "VDDIO_1.8V_VT", false);
 			if (ret)
-				pr_err("fimc_is_sec_fw_sel_eeprom: error, failed to VDDIO_1.8V_VT(off)");
+				err("fimc_is_sec_fw_sel_eeprom: error, failed to VDDIO_1.8V_VT(off)");
 		}
 		if (is_ldo_enabled[1] && !core->running_rear_camera) {
 			ret = fimc_is_sec_ldo_enable(dev, "VDDIO_1.8V_CAM", false);
 			if (ret)
-				pr_err("fimc_is_sec_fw_sel_eeprom: error, failed to VDDIO_1.8V_CAM(off)");
+				err("fimc_is_sec_fw_sel_eeprom: error, failed to VDDIO_1.8V_CAM(off)");
 		}
 	} else
 #endif
@@ -2435,7 +2435,7 @@ exit:
 		if (is_ldo_enabled[0] && !core->running_rear_camera) {
 			ret = fimc_is_sec_ldo_enable(dev, "VDDIO_1.8V_CAM", false);
 			if (ret)
-				pr_err("fimc_is_sec_fw_sel_eeprom: error, failed to VDDIO_1.8V_CAM(off)");
+				err("fimc_is_sec_fw_sel_eeprom: error, failed to VDDIO_1.8V_CAM(off)");
 		}
 	}
 
@@ -2487,7 +2487,7 @@ int fimc_is_sec_fw_sel(struct fimc_is_core *core, struct device *dev, bool heade
 			info("enable %s in the %s\n", "VDDIO_1.8V_CAM", __func__);
 			ret = fimc_is_sec_ldo_enable(dev, "VDDIO_1.8V_CAM", true);
 			if (ret) {
-				pr_err("fimc_is_sec_fw_sel: error, failed to cam_io(on)");
+				err("fimc_is_sec_fw_sel: error, failed to cam_io(on)");
 				goto exit;
 			}
 
@@ -2543,7 +2543,7 @@ int fimc_is_sec_fw_sel(struct fimc_is_core *core, struct device *dev, bool heade
 			info("Dumped FW size is larger than FW buffer. Use vmalloc.\n");
 			read_buf = vmalloc(fsize);
 			if (!read_buf) {
-				pr_err("failed to allocate memory\n");
+				err("failed to allocate memory");
 				ret = -ENOMEM;
 				goto read_phone_fw;
 			}
@@ -2554,7 +2554,7 @@ int fimc_is_sec_fw_sel(struct fimc_is_core *core, struct device *dev, bool heade
 		}
 		nread = vfs_read(fp, (char __user *)temp_buf, fsize, &fp->f_pos);
 		if (nread != fsize) {
-			pr_err("failed to read firmware file, %ld Bytes\n", nread);
+			err("failed to read firmware file, %ld Bytes", nread);
 			ret = -EIO;
 			goto read_phone_fw;
 		}
@@ -2584,7 +2584,7 @@ read_phone_fw:
 
 		fp = filp_open(fw_path, O_RDONLY, 0);
 		if (IS_ERR(fp)) {
-			pr_err("Camera: Failed open phone firmware\n");
+			err("Camera: Failed open phone firmware");
 			fp = NULL;
 			goto read_phone_fw_exit;
 		}
@@ -2595,7 +2595,7 @@ read_phone_fw:
 			info("Phone FW size is larger than FW buffer. Use vmalloc.\n");
 			read_buf = vmalloc(fsize);
 			if (!read_buf) {
-				pr_err("failed to allocate memory\n");
+				err("failed to allocate memory");
 				ret = -ENOMEM;
 				goto read_phone_fw_exit;
 			}
@@ -2606,7 +2606,7 @@ read_phone_fw:
 		}
 		nread = vfs_read(fp, (char __user *)temp_buf, fsize, &fp->f_pos);
 		if (nread != fsize) {
-			pr_err("failed to read firmware file, %ld Bytes\n", nread);
+			err("failed to read firmware file, %ld Bytes", nread);
 			ret = -EIO;
 			goto read_phone_fw_exit;
 		}
@@ -2638,7 +2638,7 @@ read_phone_fw_exit:
 			dump_fw_revision = fimc_is_sec_fw_revision(dump_fw_version);
 		}
 
-		info("from_fw_revision = %d, phone_fw_revision = %d, dump_fw_revision = %d",
+		info("from_fw_revision = %d, phone_fw_revision = %d, dump_fw_revision = %d\n",
 			from_fw_revision, phone_fw_revision, dump_fw_revision);
 
 		if ((!fimc_is_sec_fw_module_compare(sysfs_finfo.header_ver, phone_fw_version)) ||
@@ -2673,7 +2673,7 @@ read_phone_fw_exit:
 		}
 
 		if (is_dump_needed) {
-			info("Dump ISP Firmware.");
+			info("Dump ISP Firmware.\n");
 #ifdef CONFIG_COMPANION_USE
 			fimc_is_spi_s_port(spi_gpio, FIMC_IS_SPI_FUNC, false);
 #endif
@@ -2714,7 +2714,7 @@ exit:
 		info("disable %s in the %s\n", "VDDIO_1.8V_CAM", __func__);
 		ret = fimc_is_sec_ldo_enable(dev, "VDDIO_1.8V_CAM", false);
 		if (ret)
-			pr_err("fimc_is_sec_fw_sel: error, failed to cam_io(off)");
+			err("fimc_is_sec_fw_sel: error, failed to cam_io(off)");
 	}
 
 	mutex_unlock(&core->spi_lock);
@@ -2742,7 +2742,7 @@ int fimc_is_sec_concord_fw_sel(struct fimc_is_core *core, struct device *dev)
 	u8 *temp_buf = NULL;
 	bool is_dump_existed = false;
 	bool is_dump_needed = true;
-	int pixelSize = 0;
+	int sensor_id = 0;
 	struct fimc_is_spi_gpio *spi_gpio = &core->spi0.gpio;
 
 	if ((!sysfs_finfo.is_c1_caldata_read &&
@@ -2786,32 +2786,43 @@ int fimc_is_sec_concord_fw_sel(struct fimc_is_core *core, struct device *dev)
 			snprintf(sysfs_finfo.load_c1_mastersetf_name, sizeof(FIMC_IS_COMPANION_2T2_MASTER_SETF), "%s", FIMC_IS_COMPANION_2T2_MASTER_SETF);
 			snprintf(sysfs_finfo.load_c1_modesetf_name, sizeof(FIMC_IS_COMPANION_2T2_MODE_SETF), "%s", FIMC_IS_COMPANION_2T2_MODE_SETF);
 		} else {
-			pixelSize = fimc_is_sec_get_pixel_size(sysfs_finfo.concord_header_ver);
-			if (pixelSize == 20) {
+			err("Companion FW selection failed! Default FW will be used");
+			sensor_id = core->pdata->rear_sensor_id;
+			if (sensor_id == SENSOR_NAME_IMX240) {
 				snprintf(c1_fw_path, sizeof(c1_fw_path), "%s%s",
-					FIMC_IS_FW_PATH, FIMC_IS_FW_COMPANION_2T2_EVT1);
-				snprintf(sysfs_finfo.load_c1_fw_name, sizeof(FIMC_IS_FW_COMPANION_2T2_EVT1), "%s", FIMC_IS_FW_COMPANION_2T2_EVT1);
-				sysfs_finfo.sensor_id = COMPANION_SENSOR_2T2;
-				snprintf(sysfs_finfo.load_c1_mastersetf_name, sizeof(FIMC_IS_COMPANION_2T2_MASTER_SETF), "%s", FIMC_IS_COMPANION_2T2_MASTER_SETF);
-				snprintf(sysfs_finfo.load_c1_modesetf_name, sizeof(FIMC_IS_COMPANION_2T2_MODE_SETF), "%s", FIMC_IS_COMPANION_2T2_MODE_SETF);
-			} else if (pixelSize == 16) {
-				snprintf(c1_fw_path, sizeof(c1_fw_path), "%s%s",
-					FIMC_IS_FW_PATH, FIMC_IS_FW_COMPANION_2P2_EVT1);
-				snprintf(sysfs_finfo.load_c1_fw_name, sizeof(FIMC_IS_FW_COMPANION_2P2_EVT1), "%s", FIMC_IS_FW_COMPANION_2P2_EVT1);
-				sysfs_finfo.sensor_id = COMPANION_SENSOR_2P2;
-				snprintf(sysfs_finfo.load_c1_mastersetf_name, sizeof(FIMC_IS_COMPANION_2P2_MASTER_SETF), "%s", FIMC_IS_COMPANION_2P2_MASTER_SETF);
-				snprintf(sysfs_finfo.load_c1_modesetf_name, sizeof(FIMC_IS_COMPANION_2P2_MODE_SETF), "%s", FIMC_IS_COMPANION_2P2_MODE_SETF);
-			} else if (pixelSize == 12) {
+					FIMC_IS_FW_PATH, FIMC_IS_FW_COMPANION_IMX240_EVT1);
+				snprintf(sysfs_finfo.load_c1_fw_name, sizeof(FIMC_IS_FW_COMPANION_IMX240_EVT1), "%s", FIMC_IS_FW_COMPANION_IMX240_EVT1);
+				sysfs_finfo.sensor_id = COMPANION_SENSOR_IMX240;
+				snprintf(sysfs_finfo.load_c1_mastersetf_name, sizeof(FIMC_IS_COMPANION_IMX240_MASTER_SETF), "%s", FIMC_IS_COMPANION_IMX240_MASTER_SETF);
+				snprintf(sysfs_finfo.load_c1_modesetf_name, sizeof(FIMC_IS_COMPANION_IMX240_MODE_SETF), "%s", FIMC_IS_COMPANION_IMX240_MODE_SETF);
+			} else if (sensor_id == SENSOR_NAME_S5K2P2_12M) {
 				snprintf(c1_fw_path, sizeof(c1_fw_path), "%s%s",
 					FIMC_IS_FW_PATH, FIMC_IS_FW_COMPANION_2P2_12M_EVT1);
 				snprintf(sysfs_finfo.load_c1_fw_name, sizeof(FIMC_IS_FW_COMPANION_2P2_12M_EVT1), "%s", FIMC_IS_FW_COMPANION_2P2_12M_EVT1);
 				sysfs_finfo.sensor_id = COMPANION_SENSOR_2P2;
 				snprintf(sysfs_finfo.load_c1_mastersetf_name, sizeof(FIMC_IS_COMPANION_2P2_12M_MASTER_SETF), "%s", FIMC_IS_COMPANION_2P2_12M_MASTER_SETF);
 				snprintf(sysfs_finfo.load_c1_modesetf_name, sizeof(FIMC_IS_COMPANION_2P2_12M_MODE_SETF), "%s", FIMC_IS_COMPANION_2P2_12M_MODE_SETF);
-			} else {
+			} else if (sensor_id == SENSOR_NAME_S5K2P2) {
+				snprintf(c1_fw_path, sizeof(c1_fw_path), "%s%s",
+					FIMC_IS_FW_PATH, FIMC_IS_FW_COMPANION_2P2_EVT1);
+				snprintf(sysfs_finfo.load_c1_fw_name, sizeof(FIMC_IS_FW_COMPANION_2P2_EVT1), "%s", FIMC_IS_FW_COMPANION_2P2_EVT1);
+				sysfs_finfo.sensor_id = COMPANION_SENSOR_2P2;
+				snprintf(sysfs_finfo.load_c1_mastersetf_name, sizeof(FIMC_IS_COMPANION_2P2_MASTER_SETF), "%s", FIMC_IS_COMPANION_2P2_MASTER_SETF);
+				snprintf(sysfs_finfo.load_c1_modesetf_name, sizeof(FIMC_IS_COMPANION_2P2_MODE_SETF), "%s", FIMC_IS_COMPANION_2P2_MODE_SETF);
+			} else if (sensor_id == SENSOR_NAME_S5K2T2) {
+				snprintf(c1_fw_path, sizeof(c1_fw_path), "%s%s",
+					FIMC_IS_FW_PATH, FIMC_IS_FW_COMPANION_2T2_EVT1);
 				snprintf(sysfs_finfo.load_c1_fw_name, sizeof(FIMC_IS_FW_COMPANION_2T2_EVT1), "%s", FIMC_IS_FW_COMPANION_2T2_EVT1);
+				sysfs_finfo.sensor_id = COMPANION_SENSOR_2T2;
 				snprintf(sysfs_finfo.load_c1_mastersetf_name, sizeof(FIMC_IS_COMPANION_2T2_MASTER_SETF), "%s", FIMC_IS_COMPANION_2T2_MASTER_SETF);
 				snprintf(sysfs_finfo.load_c1_modesetf_name, sizeof(FIMC_IS_COMPANION_2T2_MODE_SETF), "%s", FIMC_IS_COMPANION_2T2_MODE_SETF);
+			} else {
+				snprintf(c1_fw_path, sizeof(c1_fw_path), "%s%s",
+					FIMC_IS_FW_PATH, FIMC_IS_FW_COMPANION_IMX240_EVT1);
+				snprintf(sysfs_finfo.load_c1_fw_name, sizeof(FIMC_IS_FW_COMPANION_IMX240_EVT1), "%s", FIMC_IS_FW_COMPANION_IMX240_EVT1);
+				sysfs_finfo.sensor_id = COMPANION_SENSOR_IMX240;
+				snprintf(sysfs_finfo.load_c1_mastersetf_name, sizeof(FIMC_IS_COMPANION_IMX240_MASTER_SETF), "%s", FIMC_IS_COMPANION_IMX240_MASTER_SETF);
+				snprintf(sysfs_finfo.load_c1_modesetf_name, sizeof(FIMC_IS_COMPANION_IMX240_MODE_SETF), "%s", FIMC_IS_COMPANION_IMX240_MODE_SETF);
 			}
 		}
 
@@ -2838,7 +2849,7 @@ int fimc_is_sec_concord_fw_sel(struct fimc_is_core *core, struct device *dev)
 			info("Dumped Companion FW size is larger than FW buffer. Use vmalloc.\n");
 			read_buf = vmalloc(fsize);
 			if (!read_buf) {
-				pr_err("failed to allocate memory\n");
+				err("failed to allocate memory");
 				ret = -ENOMEM;
 				goto read_phone_fw;
 			}
@@ -2849,7 +2860,7 @@ int fimc_is_sec_concord_fw_sel(struct fimc_is_core *core, struct device *dev)
 		}
 		nread = vfs_read(fp, (char __user *)temp_buf, fsize, &fp->f_pos);
 		if (nread != fsize) {
-			pr_err("failed to read firmware file, %ld Bytes\n", nread);
+			err("failed to read firmware file, %ld Bytes", nread);
 			ret = -EIO;
 			goto read_phone_fw;
 		}
@@ -2878,7 +2889,7 @@ read_phone_fw:
 
 		fp = filp_open(c1_fw_path, O_RDONLY, 0);
 		if (IS_ERR(fp)) {
-			pr_err("Camera: Failed open phone companion firmware\n");
+			err("Camera: Failed open phone companion firmware");
 			fp = NULL;
 			goto read_phone_fw_exit;
 		}
@@ -2890,7 +2901,7 @@ read_phone_fw:
 			info("Phone Companion FW size is larger than FW buffer. Use vmalloc.\n");
 			read_buf = vmalloc(fsize);
 			if (!read_buf) {
-				pr_err("failed to allocate memory\n");
+				err("failed to allocate memory");
 				ret = -ENOMEM;
 				goto read_phone_fw_exit;
 			}
@@ -2901,7 +2912,7 @@ read_phone_fw:
 		}
 		nread = vfs_read(fp, (char __user *)temp_buf, fsize, &fp->f_pos);
 		if (nread != fsize) {
-			pr_err("failed to read companion firmware file, %ld Bytes\n", nread);
+			err("failed to read companion firmware file, %ld Bytes", nread);
 			ret = -EIO;
 			goto read_phone_fw_exit;
 		}
@@ -2933,7 +2944,7 @@ read_phone_fw_exit:
 			dump_c1_fw_revision = fimc_is_sec_fw_revision(dump_c1_fw_version);
 		}
 
-		info("from_c1_fw_revision = %d, phone_c1_fw_revision = %d, dump_c1_fw_revision = %d",
+		info("from_c1_fw_revision = %d, phone_c1_fw_revision = %d, dump_c1_fw_revision = %d\n",
 			from_c1_fw_revision, phone_c1_fw_revision, dump_c1_fw_revision);
 
 		if ((!fimc_is_sec_fw_module_compare(sysfs_finfo.concord_header_ver, phone_c1_fw_version)) ||

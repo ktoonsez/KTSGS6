@@ -46,3 +46,13 @@ config SEC_NFC_LDO_JPN_CONTROL
 
 	  Say Y here to compile support for SEC NFC LDO CONTROL feature into the
 	  kernel.
+
+config NFC_EDC_TUNING
+        bool "NFC_EDC_TUNING"
+        default n
+        help
+          SAMSUNG SEC NFC EDC TUNNING feature.
+          This feature provides support for SAMSUNG NFC products.
+	  You should select this feature if you want to change EDC value for view cover.
+
+	  Say Y here to improve view cover recognition rate

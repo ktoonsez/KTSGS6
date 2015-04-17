@@ -1068,7 +1068,7 @@ void tasklet_flite_str0(unsigned long data)
 	group_3aa = &ischain->group_3aa;
 	group_isp = &ischain->group_isp;
 	if (unlikely(list_empty(&group_3aa->smp_trigger.wait_list))) {
-		atomic_set(&group_3aa->sensor_fcount, fcount + group_3aa->async_shots);
+		atomic_set(&group_3aa->sensor_fcount, fcount + group_3aa->skip_shots);
 
 		/*
 		 * pcount : program count
@@ -1085,13 +1085,13 @@ void tasklet_flite_str0(unsigned long data)
 				groupmgr->group_smp_res[group_isp->slot].count,
 				atomic_read(&group_isp->rcount),
 				atomic_read(&group_isp->scount),
-				fcount + group_3aa->async_shots,
+				fcount + group_3aa->skip_shots,
 				*last_fcount0, *last_fcount1, group_3aa->pcount);
 		}
 		g_print_cnt++;
 	} else {
 		g_print_cnt = 0;
-		atomic_set(&group_3aa->sensor_fcount, fcount + group_3aa->async_shots);
+		atomic_set(&group_3aa->sensor_fcount, fcount + group_3aa->skip_shots);
 		up(&group_3aa->smp_trigger);
 	}
 
@@ -1202,7 +1202,7 @@ void tasklet_flite_str2(unsigned long data)
         group_3aa = &ischain->group_3aa;
         group_isp = &ischain->group_isp;
         if (unlikely(list_empty(&group_3aa->smp_trigger.wait_list))) {
-                atomic_set(&group_3aa->sensor_fcount, fcount + group_3aa->async_shots);
+                atomic_set(&group_3aa->sensor_fcount, fcount + group_3aa->skip_shots);
 
                 /*
                  * pcount : program count
@@ -1219,13 +1219,13 @@ void tasklet_flite_str2(unsigned long data)
                                 groupmgr->group_smp_res[group_isp->slot].count,
                                 atomic_read(&group_isp->rcount),
                                 atomic_read(&group_isp->scount),
-                                fcount + group_3aa->async_shots,
+                                fcount + group_3aa->skip_shots,
                                 *last_fcount0, *last_fcount1, group_3aa->pcount);
                 }
                 g_print_cnt++;
         } else {
                 g_print_cnt = 0;
-                atomic_set(&group_3aa->sensor_fcount, fcount + group_3aa->async_shots);
+                atomic_set(&group_3aa->sensor_fcount, fcount + group_3aa->skip_shots);
                 up(&group_3aa->smp_trigger);
         }
 

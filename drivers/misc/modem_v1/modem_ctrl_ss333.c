@@ -44,6 +44,18 @@ static void print_mc_state(struct modem_ctl *mc)
 		cp_status, cp_dump_int, event);
 }
 
+void modem_state_change(struct modem_ctl *mc, enum modem_state new_state)
+{
+	if (mc->iod && mc->iod->modem_state_changed)
+		mc->iod->modem_state_changed(mc->iod, new_state);
+
+	if (mc->iod_ds && mc->iod_ds->modem_state_changed)
+		mc->iod_ds->modem_state_changed(mc->iod_ds, new_state);
+
+	if (mc->bootd && mc->iod->modem_state_changed)
+		mc->bootd->modem_state_changed(mc->bootd, new_state);
+}
+
 static irqreturn_t cp_active_handler(int irq, void *arg)
 {
 	struct modem_ctl *mc = (struct modem_ctl *)arg;
@@ -79,13 +91,8 @@ static irqreturn_t cp_active_handler(int irq, void *arg)
 		}
 	}
 
-	if (new_state != old_state) {
-		/* Change the modem state for RIL */
-		mc->iod->modem_state_changed(mc->iod, new_state);
-
-		/* Change the modem state for CBD */
-		mc->bootd->modem_state_changed(mc->bootd, new_state);
-	}
+	if (new_state != old_state)
+		modem_state_change(mc, new_state);
 
 	spin_unlock_irqrestore(&mc->lock, flags);
 
@@ -306,20 +313,11 @@ static void handle_no_response_cp_crash(unsigned long arg)
 	mif_err("%s: ERR! No response from CP\n", mc->name);
 
 	spin_lock_irqsave(&mc->lock, flags);
-	/* Change the modem state for RIL */
-	if (mc->iod)
-#ifdef CONFIG_SEC_MODEM_DEBUG
-		mc->iod->modem_state_changed(mc->iod, STATE_CRASH_EXIT);
-#else
-		mc->iod->modem_state_changed(mc->iod, STATE_CRASH_RESET);
-#endif
 
-	/* Change the modem state for CBD */
-	if (mc->bootd)
 #ifdef CONFIG_SEC_MODEM_DEBUG
-		mc->bootd->modem_state_changed(mc->bootd, STATE_CRASH_EXIT);
+	modem_state_change(mc, STATE_CRASH_EXIT);
 #else
-		mc->bootd->modem_state_changed(mc->bootd, STATE_CRASH_RESET);
+	modem_state_change(mc, STATE_CRASH_RESET);
 #endif
 	spin_unlock_irqrestore(&mc->lock, flags);
 }
@@ -507,10 +505,7 @@ static int modemctl_notify_call(struct notifier_block *nfb,
 
 	switch (event) {
 	case MDM_EVENT_CP_FORCE_RESET:
-		if (mc->iod && mc->iod->modem_state_changed)
-			mc->iod->modem_state_changed(mc->iod, STATE_CRASH_RESET);
-		if (mc->bootd && mc->bootd->modem_state_changed)
-			mc->bootd->modem_state_changed(mc->bootd, STATE_CRASH_RESET);
+		modem_state_change(mc, STATE_CRASH_RESET);
 		break;
 	case MDM_CRASH_PM_FAIL:
 	case MDM_CRASH_PM_CP_FAIL:

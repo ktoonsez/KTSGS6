@@ -143,9 +143,6 @@ struct fimc_is_frame {
 	unsigned long		req_flag;
 	unsigned long		out_flag;
 
-	/* for overwriting framecount check */
-	bool			has_fcount;
-
 #ifdef MEASURE_TIME
 	/* time measure externally */
 	struct timeval		*tzone;

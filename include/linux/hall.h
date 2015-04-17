@@ -7,4 +7,8 @@ struct hall_platform_data {
 };
 extern struct device *sec_key;
 
+#ifdef CONFIG_CERTIFY_HALL_NFC_WA
+extern int felica_ant_tuning(int parameter);
+#endif
+
 #endif /* _HALL_H */

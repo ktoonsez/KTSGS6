@@ -106,8 +106,10 @@ struct fimc_is_group {
 	struct semaphore		smp_trigger;
 	struct semaphore		smp_shot;
 	atomic_t			smp_shot_count;
-	u32				async_shots;
+	u32				init_shots;
+	u32				asyn_shots;
 	u32				sync_shots;
+	u32				skip_shots;
 #ifdef ENABLE_FAST_SHOT
 	struct camera2_ctl		fast_ctl;
 #endif

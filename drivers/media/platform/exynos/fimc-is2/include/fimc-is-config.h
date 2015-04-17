@@ -148,6 +148,7 @@
 #define DBG_PER_FRAME
 /* #define DBG_STREAMING */
 #define DBG_STREAM_ID 0xF
+/* #define DBG_JITTER */
 #define FW_PANIC_ENABLE
 /* #define SENSOR_PANIC_ENABLE */
 /* #define FIXED_FPS_DEBUG */

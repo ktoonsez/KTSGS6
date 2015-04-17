@@ -259,6 +259,10 @@ int exynos_pcie_reset(struct pcie_port *pp)
 
 retry:
 	if (soc_is_exynos7420() && exynos_pcie->ch_num == 0) {
+#ifdef CONFIG_ESOC
+		if(mdm_get_fatal_status())
+			return -EPIPE;
+#endif
 		/* set #PERST Low */
 		gpio_set_value(exynos_pcie->perst_gpio, 0);
 		msleep(15);
@@ -333,17 +337,17 @@ retry:
 	count = 0;
 
 	if(exynos_pcie->ch_num == 0) {
-		while (count < 10) {
+		while (count < 50) {
 			val = readl(exynos_pcie->elbi_base + PCIE_IRQ_LEVEL) & 0x10;
 			if (val)
 				break;
 
 			count++;
 
-			msleep(5);
+			usleep_range(1000, 1001);
 		}
 
-		if(count == 10)
+		if(count == 50)
 			count = MAX_TIMEOUT;
 	} else {
 		while (count < MAX_TIMEOUT) {
@@ -358,7 +362,9 @@ retry:
 	}
 
 	/* wait to check whether link down again(D0 UNINIT) or not for retry */
-	msleep(1);
+	if (exynos_pcie->ch_num == 1)
+		msleep(1);
+
 	val = readl(exynos_pcie->elbi_base + PCIE_PM_DSTATE) & 0x7;
 	if (count >= MAX_TIMEOUT || val == PCIE_D0_UNINIT_STATE) {
 		try_cnt++;
@@ -387,8 +393,6 @@ retry:
 	} else {
 		writel(readl(exynos_pcie->elbi_base + PCIE_IRQ_SPECIAL),
 				exynos_pcie->elbi_base + PCIE_IRQ_SPECIAL);
-		dev_info(dev, "%s: Link up:%x\n", __func__,
-				readl(exynos_pcie->elbi_base + PCIE_ELBI_RDLH_LINKUP) & 0x1f);
 
 		if (soc_is_exynos5433())
 			queue_delayed_work(exynos_pcie->pcie_wq,
@@ -397,6 +401,9 @@ retry:
 			writel(readl(exynos_pcie->elbi_base + PCIE_IRQ_EN_LEVEL)
 				| IRQ_LINKDOWN_ENABLE,
 				exynos_pcie->elbi_base + PCIE_IRQ_EN_LEVEL);
+
+		dev_info(dev, "%s: Link up : 0x%08x\n", __func__,
+				readl(exynos_pcie->elbi_base + PCIE_ELBI_RDLH_LINKUP));
 	}
 
 	/* setup ATU for cfg/mem outbound */
@@ -1373,7 +1380,14 @@ void exynos_pcie_poweron(int ch_num)
 			exynos_pcie->pci_saved_configs = pci_store_saved_state(exynos_pcie->pci_dev);
 			exynos_pcie->probe_ok = 1;
 		} else if (exynos_pcie->probe_ok) {
-			exynos_pcie_reset(pp);
+			if (soc_is_exynos7420() && exynos_pcie->ch_num == 0) {
+				if (exynos_pcie_reset(pp)) {
+					dev_err(pp->dev, "Failed exynos_pcie_reset\n");
+					return;
+				}
+			} else {
+				exynos_pcie_reset(pp);
+			}
 			exynos_pcie->state = STATE_LINK_UP;
 
 #ifdef CONFIG_PCI_MSI
@@ -1952,6 +1966,27 @@ int exynos_pcie_disable_irq(int ch_num)
 	return 0;
 }
 EXPORT_SYMBOL(exynos_pcie_disable_irq);
+
+int exynos_pcie_dump_link_down_status(int ch_num)
+{
+	struct pcie_port *pp = &g_pcie[ch_num].pp;
+	struct exynos_pcie *exynos_pcie = to_exynos_pcie(pp);
+
+	if (exynos_pcie->state == STATE_LINK_UP) {
+		dev_info(pp->dev, "LTSSM: 0x%08x\n",
+				readl(exynos_pcie->elbi_base + PCIE_ELBI_RDLH_LINKUP));
+		dev_info(pp->dev, "LTSSM_H: 0x%08x\n",
+				readl(exynos_pcie->elbi_base + 0x70));
+		dev_info(pp->dev, "link_down_status: 0x%08x\n",
+				readl(exynos_pcie->elbi_base + PCIE_IRQ_SPECIAL));
+	}
+	else {
+		dev_info(pp->dev, "PCIE link state is %d\n", exynos_pcie->state);
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(exynos_pcie_dump_link_down_status);
 
 MODULE_AUTHOR("Jingoo Han <jg1.han@samsung.com>");
 MODULE_DESCRIPTION("Samsung PCIe host controller driver");

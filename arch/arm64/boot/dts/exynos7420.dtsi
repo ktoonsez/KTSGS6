@@ -307,7 +307,7 @@
 		asv_v2_apollo_margin = <2>;
 		asv_v2_g3d_margin = <2>;
 		asv_v2_mif_margin = <2>;
-		/* ASV Version2 Margin, ASV 8, 9, 10 tables */
+		/* ASV Version2 Margin, ASV 8, 9, 10, 11, 15 tables */
 		asv_v3_atlas_margin = <4>;
 		asv_v3_apollo_margin = <4>;
 		asv_v3_g3d_margin = <2>;

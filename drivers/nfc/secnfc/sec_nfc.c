@@ -92,30 +92,15 @@ extern int poweroff_charging;
 /*	extern unsigned int system_rev;  Not using system_rev anymore	*/
 
 static unsigned int tvdd_gpio = -1;
-static struct i2c_msg gread_msgs[] = {
-	{
-		.addr	= 0,
-		.flags	= 0,
-		.len	= 1,
-		.buf	= NULL,
-	},
-	{
-		.addr	= 0,
-		.flags	= I2C_M_RD,
-		.len	= 1,
-		.buf	= NULL,
-	},
-};
 
-static struct i2c_msg gwrite_msgs[] = {
-	{
-		.addr	= 0,
-		.flags	= 0,
-		.len	= 2,
-		.buf	= NULL,
-	},
-};
+#undef FEATURE_SET_DEFAULT_ANT_VAL
+#define FEATURE_FELICA_IMPROVE_ANT_ON_CASE
 
+#ifdef FEATURE_FELICA_IMPROVE_ANT_ON_CASE
+static unsigned char user_ant = 10;
+#endif
+static int felica_epc_ant_read(unsigned char *read_buff);
+static int felica_epc_ant_write(char ant);
 
 /*
  *	I2C device_id table
@@ -173,7 +158,29 @@ static int bu80003gul_i2c_probe(struct i2c_client *client,
 		EPC_ERR("[MFDD] %s Failed to register the device[ret:%d]\n",
 				__func__, ret);
 	}
+
+#ifdef FEATURE_SET_DEFAULT_ANT_VAL
+	/* set default value temporarily */
+	ret = felica_epc_ant_write(FEATURE_SET_DEFAULT_ANT_VAL);
+	if (ret < 0) {
+		EPC_ERR("[MFDD] %s felica_epc_ant_write fail, ret=[%d]",
+				__func__, ret);
+		return -EFAULT;
+	}
+#endif
+#ifdef FEATURE_FELICA_IMPROVE_ANT_ON_CASE
+	ret = felica_epc_ant_read(&user_ant);
+	if (ret < 0) {
+		EPC_ERR("[MFDD] %s felica_epc_ant_read fail, ret=[%d]",
+				__func__, ret);
+		user_ant = 10;
+		return -EFAULT;
+	}
+	pr_info("%s : felica_ant : %d\n", __func__, user_ant);
+#endif
+
 	EPC_DEBUG("[MFDD] %s END", __func__);
+
 	return 0;
 }
 
@@ -205,22 +212,55 @@ int felica_epc_set_lock_state(int state)
 {
 	int ret;
 	unsigned char write_buff[2];
+	struct i2c_msg write_msgs[] = {
+		{
+			.addr	= I2C_ADDR,
+			.flags	= 0,
+			.len	= 2,
+			.buf	= NULL,
+		},
+	};
 
 	write_buff[0] = 0x02;
 	write_buff[1] = state;
-	gwrite_msgs[0].buf = &write_buff[0];
-	gwrite_msgs[0].addr = I2C_ADDR;
+	write_msgs[0].buf = &write_buff[0];
 
-	ret = i2c_transfer(bu80003gul_i2c_client->adapter, gwrite_msgs, 1);
+	ret = i2c_transfer(bu80003gul_i2c_client->adapter, write_msgs, 1);
 	if (ret < 0) {
-			EPC_ERR(" %s ERROR(i2c_transfer), ret=[%d]",
-						   __func__, ret);
-			return -EIO;
+		EPC_ERR(" %s ERROR(i2c_transfer), ret=[%d]",
+				__func__, ret);
+		return -EIO;
 	}
 
-return ret;
+	return ret;
 }
 
+int felica_epc_reset(void)
+{
+	int ret;
+	unsigned char write_buff[2];
+	struct i2c_msg write_msgs[] = {
+		{
+			.addr	= I2C_ADDR,
+			.flags	= 0,
+			.len	= 2,
+			.buf	= NULL,
+		},
+	};
+
+	write_buff[0] = 0x00;
+	write_buff[1] = 1;
+	write_msgs[0].buf = &write_buff[0];
+
+	ret = i2c_transfer(bu80003gul_i2c_client->adapter, write_msgs, 1);
+	if (ret < 0) {
+		EPC_ERR(" %s ERROR(i2c_transfer), ret=[%d]",
+				__func__, ret);
+		return -EIO;
+	}
+
+	return ret;
+}
 static int felica_epc_register(void)
 {
 	struct device *device_felica_epc;
@@ -292,91 +332,170 @@ static int felica_epc_close(struct inode *inode, struct file *file)
 	return 0;
 }
 
-
-static ssize_t felica_epc_read(struct file *file, char __user *buf,
-				size_t len, loff_t *ppos)
+static int felica_epc_ant_read(unsigned char *read_buff)
 {
 	int ret;
 	unsigned char address = I2C_ANT_ADDR;
-	unsigned char read_buff = 0;
-	struct i2c_msg read_msgs[2];
-
-	read_msgs[0].flags = gread_msgs[0].flags;
-	read_msgs[0].len = gread_msgs[0].len;
-	read_msgs[1].flags = gread_msgs[1].flags;
-	read_msgs[1].len = gread_msgs[1].len;
-
-	read_msgs[0].addr = I2C_ADDR;
-	read_msgs[0].buf = &address;
-	read_msgs[1].addr = I2C_ADDR;
-	read_msgs[1].buf = &read_buff;
+	struct i2c_msg read_msgs[] = {
+		{
+			.addr	= I2C_ADDR,
+			.flags	= 0,
+			.len	= 1,
+			.buf	= &address,
+		},
+		{
+			.addr	= I2C_ADDR,
+			.flags	= I2C_M_RD,
+			.len	= 1,
+			.buf	= read_buff,
+		},
+	};
 
 	if (bu80003gul_i2c_client == NULL) {
 		EPC_ERR("[MFDD] bu80003gul_i2c_client is NULL %s -EIO", __func__);
 		return -EIO;
 	}
 
+	*read_buff = 0;
 	ret = i2c_transfer(bu80003gul_i2c_client->adapter, &read_msgs[0], 1);
 	if (ret < 0) {
 		EPC_ERR("[MFDD] %s ERROR(i2c_transfer[0]), ret=[%d]",
-			       __func__, ret);
+				__func__, ret);
 		return -EIO;
 	}
 	ret = i2c_transfer(bu80003gul_i2c_client->adapter, &read_msgs[1], 1);
 	if (ret < 0) {
 		EPC_ERR("[MFDD] %s ERROR(i2c_transfer[1]), ret=[%d]",
-			       __func__, ret);
+				__func__, ret);
 		return -EIO;
 	}
-	ret = copy_to_user(buf, &read_buff, len);
-	if (ret != 0) {
-		EPC_ERR("[MFDD] %s ERROR(copy_to_user), ret=[%d]",
-			       __func__, ret);
-		return -EFAULT;
-	}
-	*ppos += 1;
-	EPC_DEBUG("[MFDD] %s END\n", __func__);
-	return 1; /* Only one byte at a time will be read. Hence return 1 on success. */
+
+	pr_info("%s : ant : %d\n", __func__, *read_buff);
+
+	return 0;
 
 }
 
-static ssize_t felica_epc_write(struct file *file, const char __user *data,
-				size_t len, loff_t *ppos)
+static int felica_epc_ant_write(char ant)
 {
-	int ret;
-	char ant;
-	unsigned char write_buff[2];
+	int ret = 0;
+	char write_buff[2];
+	struct i2c_msg write_msgs[] = {
+		{
+			.addr	= I2C_ADDR,
+			.flags	= 0,
+			.len	= 2,
+			.buf	= NULL,
+		},
+	};
 
 	if (bu80003gul_i2c_client == NULL) {
 		EPC_ERR("[MFDD] bu80003gul_i2c_client is NULL %s", __func__);
 		return -EIO;
 	}
 
+	/* why is bit 7 set ? */
+	pr_info("%s : ant : %d\n", __func__, ant&0x7F);
+
+	write_buff[0] = I2C_ANT_ADDR;
+	write_buff[1] = ant;
+	write_msgs[0].buf = &write_buff[0];
+
+	ret = i2c_transfer(bu80003gul_i2c_client->adapter, &write_msgs[0], 1);
+	if (ret < 0) {
+		EPC_ERR("[MFDD] %s ERROR(i2c_transfer), ret=[%d]",
+				__func__, ret);
+		return -EIO;
+	}
+
+	return ret;
+}
+
+static ssize_t felica_epc_read(struct file *file, char __user *buf,
+		size_t len, loff_t *ppos)
+{
+	int ret;
+	unsigned char read_buff = 0;
+
+	ret = felica_epc_ant_read(&read_buff);
+	if (ret < 0) {
+		EPC_ERR("[MFDD] %s felica_epc_ant_read fail, ret=[%d]",
+				__func__, ret);
+		return -EFAULT;
+	}
+
+	ret = copy_to_user(buf, &read_buff, len);
+	if (ret != 0) {
+		EPC_ERR("[MFDD] %s ERROR(copy_to_user), ret=[%d]",
+				__func__, ret);
+		return -EFAULT;
+	}
+
+	*ppos += 1;
+	EPC_DEBUG("[MFDD] %s END\n", __func__);
+
+	return 1; /* Only one byte at a time will be read. Hence return 1 on success. */
+
+}
+
+static ssize_t felica_epc_write(struct file *file, const char __user *data,
+		size_t len, loff_t *ppos)
+{
+	int ret;
+	char ant;
 
 	ret = copy_from_user(&ant, data, len);
 	if (ret != 0) {
 		EPC_ERR("[MFDD] %s ERROR(copy_from_user), ret=[%d]",
-			       __func__, ret);
+				__func__, ret);
 		return -EFAULT;
 	}
-	write_buff[0] = I2C_ANT_ADDR;
-	write_buff[1] = ant;
-	gwrite_msgs[0].buf = &write_buff[0];
-	gwrite_msgs[0].addr = I2C_ADDR;
 
-	ret = i2c_transfer(bu80003gul_i2c_client->adapter, gwrite_msgs, 1);
+	ret = felica_epc_ant_write(ant);
 	if (ret < 0) {
-		EPC_ERR("[MFDD] %s ERROR(i2c_transfer), ret=[%d]",
-			       __func__, ret);
-		return -EIO;
+		EPC_ERR("[MFDD] %s felica_epc_ant_write fail, ret=[%d]",
+				__func__, ret);
+		return -EFAULT;
 	}
+
+#ifdef FEATURE_FELICA_IMPROVE_ANT_ON_CASE
+	user_ant = ant & 0x7F;
+#endif
 	EPC_DEBUG("[MFDD] %s END\n", __func__);
+
 	return 1;
 }
-
-
 #endif /* BU80003GUL */
 
+#ifdef FEATURE_FELICA_IMPROVE_ANT_ON_CASE
+int felica_ant_tuning(int parameter)
+{
+	char ant;
+	int ret;
+#ifdef CONFIG_NFC_EDC_TUNING
+	if (parameter == 1)
+		ant = (user_ant > 10) ? (user_ant-10) : 1;
+        else
+	        ant = user_ant;
+#else
+	if (parameter == 1)
+		ant = 1;
+        else
+	        ant = user_ant;
+#endif
+	pr_info("%s : felica_ant : %d, event: %d\n", __func__, (int)ant, parameter);
+
+	ret = felica_epc_ant_write(ant);
+	if (ret < 0) {
+		EPC_ERR("[MFDD] %s ERROR(i2c_transfer), ret=[%d]",
+				__func__, ret);
+		return -EIO;
+	}
+
+	return 1;
+}
+EXPORT_SYMBOL(felica_ant_tuning);
+#endif
 
 #ifdef	CONFIG_SEC_NFC_I2C
 enum sec_nfc_irq {
@@ -711,8 +830,8 @@ static long sec_nfc_ioctl(struct file *file, unsigned int cmd,
 		} else if (mode == SEC_NFC_ST_UART_OFF) {
 			gpio_set_value(info->pdata->firm, STATE_FIRM_LOW);
 			if (wake_lock_active(&info->wake_lock)) {
-				pr_info("%s: [NFC] wake unlock after 5 sec.\n", __func__);
-				wake_lock_timeout(&info->wake_lock, 5 * HZ);
+				pr_info("%s: [NFC] wake unlock after 2 sec.\n", __func__);
+				wake_lock_timeout(&info->wake_lock, 2 * HZ);
 			}
 		}
 		else
@@ -905,6 +1024,9 @@ static int sec_nfc_suspend(struct device *dev)
 /*	struct sec_nfc_platform_data *pdata = dev->platform_data;	*/
 
 	int ret = 0;
+
+	if (lpcharge)
+		return 0;
 
 	mutex_lock(&info->mutex);
 
@@ -1193,9 +1315,33 @@ err_pdata:
 							__func__, ret);
 	return ret;
 }
+static void sec_nfc_lpm_set(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct sec_nfc_info *info = platform_get_drvdata(pdev);
+	int ret;
+
+	info->pdata->nfc_active = pinctrl_lookup_state(info->pdata->nfc_pinctrl, "sec_nfc_lpm");
+	ret = pinctrl_select_state(info->pdata->nfc_pinctrl, info->pdata->nfc_active);
+	if (ret != 0)
+		pr_err("%s: fail to select_state active\n", __func__);
+
+	if (info->pdata->i2c_1p8 != NULL)
+		sec_nfc_regulator_onoff(info->pdata->i2c_1p8, NFC_I2C_LDO_OFF);
+
+}
 
 static void sec_nfc_shutdown(struct platform_device *pdev)
 {
+	int ret;
+	struct device *dev = &pdev->dev;
+
+        ret = felica_epc_reset();
+        if (ret < 0) {
+                EPC_ERR("[MFDD] %s ERROR(i2c_transfer), ret=[%d]",
+                                __func__, ret);
+        }
+	sec_nfc_lpm_set(dev);
 	gpio_set_value(tvdd_gpio, 0);
 }
 

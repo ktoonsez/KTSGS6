@@ -326,7 +326,7 @@ int fimc_is_parse_dt(struct platform_device *pdev)
 
 	pdata->check_sensor_vendor = of_property_read_bool(np, "check_sensor_vendor");
 	if (!pdata->check_sensor_vendor) {
-		pr_info("check_sensor_vendor not use(%d)", pdata->check_sensor_vendor);
+		info("check_sensor_vendor not use(%d)\n", pdata->check_sensor_vendor);
 	}
 
 #ifdef CONFIG_OIS_USE
@@ -348,7 +348,7 @@ int fimc_is_parse_dt(struct platform_device *pdev)
 
 	pdata->skip_cal_loading = of_property_read_bool(np, "skip_cal_loading");
 	if (!pdata->skip_cal_loading) {
-		pr_info("skip_cal_loading not use(%d)", pdata->skip_cal_loading);
+		info("skip_cal_loading not use(%d)\n", pdata->skip_cal_loading);
 	}
 
 	pdata->pinctrl = devm_pinctrl_get(dev);
@@ -532,7 +532,7 @@ int fimc_is_sensor_module_parse_dt(struct platform_device *pdev,
 
 	pdata = kzalloc(sizeof(struct exynos_platform_fimc_is_module), GFP_KERNEL);
 	if (!pdata) {
-		pr_err("%s: no memory for platform data\n", __func__);
+		err("%s: no memory for platform data", __func__);
 		return -ENOMEM;
 	}
 
@@ -636,42 +636,42 @@ int fimc_is_spi_parse_dt(struct fimc_is_spi *spi)
 
 	np = of_find_compatible_node(NULL,NULL, spi->node);
 	if(np == NULL) {
-		pr_err("compatible: fail to read, spi_parse_dt\n");
+		err("compatible: fail to read, spi_parse_dt");
 		ret = -ENODEV;
 		goto p_err;
 	}
 
 	ret = of_property_read_string(np, "fimc_is_spi_clk", (const char **) &gpio->clk);
 	if (ret) {
-		pr_err("spi gpio: fail to read, spi_parse_dt\n");
+		err("spi gpio: fail to read, spi_parse_dt");
 		ret = -ENODEV;
 		goto p_err;
 	}
 
 	ret = of_property_read_string(np, "fimc_is_spi_ssn",(const char **) &gpio->ssn);
 	if (ret) {
-		pr_err("spi gpio: fail to read, spi_parse_dt\n");
+		err("spi gpio: fail to read, spi_parse_dt");
 		ret = -ENODEV;
 		goto p_err;
 	}
 
 	ret = of_property_read_string(np, "fimc_is_spi_miso",(const char **) &gpio->miso);
 	if (ret) {
-		pr_err("spi gpio: fail to read, spi_parse_dt\n");
+		err("spi gpio: fail to read, spi_parse_dt");
 		ret = -ENODEV;
 		goto p_err;
 	}
 
 	ret = of_property_read_string(np, "fimc_is_spi_mosi",(const char **) &gpio->mosi);
 	if (ret) {
-		pr_err("spi gpio: fail to read, spi_parse_dt\n");
+		err("spi gpio: fail to read, spi_parse_dt");
 		ret = -ENODEV;
 		goto p_err;
 	}
 
 	ret = of_property_read_string(np, "fimc_is_spi_pinname", (const char **) &gpio->pinname);
 	if (ret) {
-		pr_err("spi gpio: fail to read, spi_parse_dt\n");
+		err("spi gpio: fail to read, spi_parse_dt");
 		ret = -ENODEV;
 		goto p_err;
 	}

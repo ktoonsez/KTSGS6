@@ -757,6 +757,7 @@ struct modem_ctl {
 
 	struct modemctl_ops ops;
 	struct io_device *iod;
+	struct io_device *iod_ds;
 	struct io_device *bootd;
 
 	void (*gpio_revers_bias_clear)(void);

@@ -572,13 +572,9 @@ static void fimc_is_group_set_torch(struct fimc_is_group *group,
 	if (group->prev)
 		return;
 
-#ifdef CONFIG_ENABLE_HAL3_2_META_INTERFACE
 	if (group->aeflashMode != ldr_frame->shot->ctl.aa.vendor_aeflashMode) {
 		group->aeflashMode = ldr_frame->shot->ctl.aa.vendor_aeflashMode;
-#else
-	if (group->aeflashMode != ldr_frame->shot->ctl.aa.aeflashMode) {
-		group->aeflashMode = ldr_frame->shot->ctl.aa.aeflashMode;
-#endif
+
 		switch (group->aeflashMode) {
 		case AA_FLASHMODE_ON_ALWAYS: /*TORCH mode*/
 #ifdef CONFIG_LEDS_LM3560
@@ -617,13 +613,8 @@ static void fimc_is_group_debug_aa_shot(struct fimc_is_group *group,
 		return;
 
 #ifdef DEBUG_FLASH
-#ifdef CONFIG_ENABLE_HAL3_2_META_INTERFACE
 	if (ldr_frame->shot->ctl.aa.vendor_aeflashMode != group->flashmode) {
 		group->flashmode = ldr_frame->shot->ctl.aa.vendor_aeflashMode;
-#else
-	if (ldr_frame->shot->ctl.aa.aeflashMode != group->flashmode) {
-		group->flashmode = ldr_frame->shot->ctl.aa.aeflashMode;
-#endif
 		info("flash ctl : %d(%d)\n", group->flashmode, ldr_frame->fcount);
 	}
 #endif
@@ -1375,12 +1366,16 @@ int fimc_is_group_init(struct fimc_is_groupmgr *groupmgr,
 	if (otf_input) {
 		smp_shot_init(group, MIN_OF_SHOT_RSC);
 		set_bit(FIMC_IS_GROUP_OTF_INPUT, &group->state);
-		group->async_shots = MIN_OF_ASYNC_SHOTS;
+		group->asyn_shots = MIN_OF_ASYNC_SHOTS;
+		group->skip_shots = MIN_OF_ASYNC_SHOTS;
+		group->init_shots = MIN_OF_ASYNC_SHOTS;
 		group->sync_shots = MIN_OF_SYNC_SHOTS;
 	} else {
 		smp_shot_init(group, 1);
 		clear_bit(FIMC_IS_GROUP_OTF_INPUT, &group->state);
-		group->async_shots = 0;
+		group->asyn_shots = 0;
+		group->skip_shots = 0;
+		group->init_shots = 0;
 		group->sync_shots = 1;
 	}
 
@@ -1391,14 +1386,15 @@ p_err:
 	return ret;
 }
 
+extern uint64_t jitter_cnt;
 int fimc_is_group_start(struct fimc_is_groupmgr *groupmgr,
 	struct fimc_is_group *group)
 {
 	int ret = 0;
 	struct fimc_is_device_ischain *device;
 	struct fimc_is_device_sensor *sensor;
-	struct fimc_is_framemgr *framemgr = NULL;
-	u32 shot_resource = 1;
+	struct fimc_is_resourcemgr *resourcemgr;
+	struct fimc_is_framemgr *framemgr;
 	u32 sensor_fcount;
 	u32 framerate;
 
@@ -1406,6 +1402,7 @@ int fimc_is_group_start(struct fimc_is_groupmgr *groupmgr,
 	BUG_ON(!group);
 	BUG_ON(!group->device);
 	BUG_ON(!group->device->sensor);
+	BUG_ON(!group->device->resourcemgr);
 	BUG_ON(!group->leader.vctx);
 	BUG_ON(group->instance >= FIMC_IS_STREAM_COUNT);
 	BUG_ON(group->id >= GROUP_ID_MAX);
@@ -1414,6 +1411,8 @@ int fimc_is_group_start(struct fimc_is_groupmgr *groupmgr,
 
 	device = group->device;
 	sensor = device->sensor;
+	resourcemgr = device->resourcemgr;
+	framemgr = GET_SUBDEV_FRAMEMGR(&group->leader);
 
 	if (!test_bit(FIMC_IS_GROUP_INIT, &group->state)) {
 		merr("group is NOT initialized", group);
@@ -1428,32 +1427,38 @@ int fimc_is_group_start(struct fimc_is_groupmgr *groupmgr,
 	}
 
 	if (test_bit(FIMC_IS_ISCHAIN_REPROCESSING, &device->state)) {
-		group->async_shots = 1;
+		group->asyn_shots = 1;
+		group->skip_shots = 0;
+		group->init_shots = 0;
 		group->sync_shots = 0;
-		shot_resource = group->async_shots + group->sync_shots;
 	} else {
 		if (test_bit(FIMC_IS_GROUP_OTF_INPUT, &group->state)) {
-			framemgr = GET_SUBDEV_FRAMEMGR(&group->leader);
 
-			/* async & sync shots */
-			framerate = fimc_is_sensor_g_framerate(sensor);
-			if (framerate <= 30)
-				group->async_shots = MIN_OF_ASYNC_SHOTS + 0;
-			else if (framerate <= 60)
-				group->async_shots = MIN_OF_ASYNC_SHOTS + 1;
-			else if (framerate <= 120)
-				group->async_shots = MIN_OF_ASYNC_SHOTS + 2;
-			else if (framerate <= 240)
-				group->async_shots = MIN_OF_ASYNC_SHOTS + 2;
-			else /* 300fps */
-				group->async_shots = MIN_OF_ASYNC_SHOTS + 3;
-
-			group->sync_shots = max_t(int, MIN_OF_SYNC_SHOTS,
-					framemgr->frame_cnt - group->async_shots);
+			if (resourcemgr->hal_version == IS_HAL_VER_3_2) {
+				group->asyn_shots = 0;
+				group->skip_shots = 1;
+				group->init_shots = 1;
+				group->sync_shots = 3;
+			} else {
+				framerate = fimc_is_sensor_g_framerate(sensor);
+				if (framerate <= 30)
+					group->asyn_shots = MIN_OF_ASYNC_SHOTS + 0;
+				else if (framerate <= 60)
+					group->asyn_shots = MIN_OF_ASYNC_SHOTS + 1;
+				else if (framerate <= 120)
+					group->asyn_shots = MIN_OF_ASYNC_SHOTS + 2;
+				else if (framerate <= 240)
+					group->asyn_shots = MIN_OF_ASYNC_SHOTS + 2;
+				else /* 300fps */
+					group->asyn_shots = MIN_OF_ASYNC_SHOTS + 3;
+				group->init_shots = group->asyn_shots;
+				group->skip_shots = group->asyn_shots;
+				group->sync_shots = MIN_OF_SYNC_SHOTS;
+			}
 
 			/* shot resource */
-			shot_resource = group->async_shots + MIN_OF_SYNC_SHOTS;
-			sema_init(&groupmgr->group_smp_res[group->slot], shot_resource);
+			sema_init(&groupmgr->group_smp_res[group->slot],
+				(group->asyn_shots + group->sync_shots));
 
 			/* frame count */
 			sensor_fcount = fimc_is_sensor_g_fcount(sensor) + 1;
@@ -1464,16 +1469,16 @@ int fimc_is_group_start(struct fimc_is_groupmgr *groupmgr,
 			memset(&group->intent_ctl, 0, sizeof(struct camera2_aa_ctl));
 		} else {
 			if (fimc_is_sensor_g_framerate(sensor) > 120)
-				group->async_shots = MIN_OF_ASYNC_SHOTS;
+				group->asyn_shots = 3;
 			else
-				group->async_shots = 1;
+				group->asyn_shots = 1;
+			group->skip_shots = 0;
+			group->init_shots = 0;
 			group->sync_shots = 0;
-
-			shot_resource = group->async_shots + group->sync_shots;
 		}
 	}
 
-	smp_shot_init(group, shot_resource);
+	smp_shot_init(group, (group->asyn_shots + group->sync_shots));
 	atomic_set(&group->scount, 0);
 	atomic_set(&group->rcount, 0);
 	sema_init(&group->smp_trigger, 0);
@@ -1482,7 +1487,8 @@ int fimc_is_group_start(struct fimc_is_groupmgr *groupmgr,
 	set_bit(FIMC_IS_GROUP_START, &group->state);
 
 p_err:
-	mginfo("async: %d, shot resource: %d\n", group, group, group->async_shots, shot_resource);
+	mginfo("bufs: %02d, init : %d, asyn: %d, skip: %d, sync : %d\n", group, group,
+		framemgr->frame_cnt, group->init_shots, group->asyn_shots, group->skip_shots, group->sync_shots);
 	return ret;
 }
 
@@ -1997,7 +2003,6 @@ int fimc_is_group_shot(struct fimc_is_groupmgr *groupmgr,
 	struct fimc_is_resourcemgr *resourcemgr;
 	struct fimc_is_group *gprev, *gnext;
 	struct fimc_is_group_frame *gframe;
-	int async_step = 0;
 	bool try_sdown = false;
 	bool try_rdown = false;
 	u32 slot;
@@ -2013,6 +2018,7 @@ int fimc_is_group_shot(struct fimc_is_groupmgr *groupmgr,
 	set_bit(FIMC_IS_GROUP_SHOT, &group->state);
 	atomic_dec(&group->rcount);
 	slot = group->slot;
+	device = group->device;
 
 	if (unlikely(test_bit(FIMC_IS_GROUP_FORCE_STOP, &group->state))) {
 		mgwarn(" cancel by fstop1", group, group);
@@ -2042,57 +2048,52 @@ int fimc_is_group_shot(struct fimc_is_groupmgr *groupmgr,
 	}
 	try_rdown = true;
 
-	if (test_bit(FIMC_IS_GROUP_OTF_INPUT, &group->state)) {
-		if (smp_shot_get(group) < MIN_OF_SYNC_SHOTS) {
+	if (device->sensor && !test_bit(FIMC_IS_SENSOR_FRONT_START, &device->sensor->state)) {
+		/*
+		* this statement is execued only at initial.
+		* automatic increase the frame count of sensor
+		* for next shot without real frame start
+		*/
+		if (group->init_shots > atomic_read(&group->scount)) {
+			frame->fcount = atomic_read(&group->sensor_fcount);
+			atomic_set(&group->backup_fcount, frame->fcount);
+			atomic_inc(&group->sensor_fcount);
+			goto p_skip_sync;
+		}
+	}
+
+	if (group->sync_shots) {
+		bool try_sync_shot = false;
+
+		if (group->asyn_shots == 0) {
+			try_sync_shot = true;
+		} else {
+			if ((smp_shot_get(group) < MIN_OF_SYNC_SHOTS))
+				try_sync_shot = true;
+			else
+				if (atomic_read(&group->backup_fcount) >=
+					atomic_read(&group->sensor_fcount))
+					try_sync_shot = true;
+		}
+
+		if (try_sync_shot) {
 			PROGRAM_COUNT(4);
 			ret = down_interruptible(&group->smp_trigger);
 			if (ret) {
-				mgerr(" down fail(%d) #3", group, group, ret);
+				mgerr(" down fail(%d) #4", group, group, ret);
 				goto p_err_ignore;
 			}
-		} else {
-			/*
-			 * backup fcount can not be bigger than sensor fcount
-			 * otherwise, duplicated shot can be generated.
-			 * this is problem can be caused by hal qbuf timing
-			 */
-			if (atomic_read(&group->backup_fcount) >=
-				atomic_read(&group->sensor_fcount)) {
-				PROGRAM_COUNT(5);
-				ret = down_interruptible(&group->smp_trigger);
-				if (ret) {
-					mgerr(" down fail(%d) #4", group, group, ret);
-					goto p_err_ignore;
-				}
-			} else {
-				/*
-				 * this statement is execued only at initial.
-				 * automatic increase the frame count of sensor
-				 * for next shot without real frame start
-				 */
-
-				/* it's a async shot time */
-				async_step = 1;
-			}
-		}
-
-		if (unlikely(!test_bit(FRAME_INI_MEM, &frame->memory))) {
-			mgerr(" frame memory is ALREADY released", group, group);
-			ret = -EINVAL;
-			goto p_err_ignore;
 		}
 
 		frame->fcount = atomic_read(&group->sensor_fcount);
 		atomic_set(&group->backup_fcount, frame->fcount);
-		frame->shot->dm.request.frameCount = frame->fcount;
-		frame->shot->dm.sensor.timeStamp = fimc_is_get_timestamp();
-		frame->shot->udm.sensor.timeStampBoot = fimc_is_get_timestamp_boot();
 
 		/* real automatic increase */
-		if (async_step && (smp_shot_get(group) > MIN_OF_SYNC_SHOTS))
+		if (!try_sync_shot && (smp_shot_get(group) > MIN_OF_SYNC_SHOTS))
 			atomic_inc(&group->sensor_fcount);
 	}
 
+p_skip_sync:
 	if (unlikely(test_bit(FIMC_IS_GROUP_FORCE_STOP, &group->state))) {
 		mgwarn(" cancel by fstop2", group, group);
 		ret = -EINVAL;
@@ -2106,7 +2107,6 @@ int fimc_is_group_shot(struct fimc_is_groupmgr *groupmgr,
 	}
 
 	PROGRAM_COUNT(6);
-	device = group->device;
 	gnext = group->gnext;
 	gprev = group->gprev;
 	resourcemgr = device->resourcemgr;
@@ -2243,6 +2243,10 @@ int fimc_is_group_done(struct fimc_is_groupmgr *groupmgr,
 #ifdef DEBUG_AA
 	fimc_is_group_debug_aa_done(group, frame);
 #endif
+
+	/* sensor tagging */
+	if (test_bit(FIMC_IS_GROUP_OTF_INPUT, &group->state))
+		fimc_is_sensor_tag(device->sensor, frame);
 
 	/* fd information backup */
 	if (device->vra.leader == &group->leader)

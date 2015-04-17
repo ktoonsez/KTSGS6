@@ -26,6 +26,7 @@
 extern struct class *camera_class; /*sys/class/camera*/
 struct device *s2mpb02_led_dev;
 struct s2mpb02_led_data *global_led_datas[S2MPB02_LED_MAX];
+bool torch_step_adjust = false;
 
 struct s2mpb02_led_data {
 	struct led_classdev led;
@@ -217,20 +218,39 @@ ssize_t s2mpb02_store(struct device *dev,
 	}
 
 	pr_info("[LED]%s , value:%d\n", __func__, value);
-	if (value == 0) {
-		/* Turn off Torch */
-		global_led_datas[S2MPB02_TORCH_LED_1]->data->brightness = LED_OFF;
-		led_set(global_led_datas[S2MPB02_TORCH_LED_1]);
-	} else if (value == 1) {
-		/* Turn on Torch */
-		global_led_datas[S2MPB02_TORCH_LED_1]->data->brightness = S2MPB02_TORCH_OUT_I_60MA;
-		led_set(global_led_datas[S2MPB02_TORCH_LED_1]);
-	} else if (value == 100) {
-		/* Factory mode Turn on Torch */
-		global_led_datas[S2MPB02_TORCH_LED_1]->data->brightness = S2MPB02_TORCH_OUT_I_240MA;
-		led_set(global_led_datas[S2MPB02_TORCH_LED_1]);
+
+	if(torch_step_adjust) {
+		if (value == 0) {
+			/* Turn off Torch */
+			global_led_datas[S2MPB02_TORCH_LED_1]->data->brightness = LED_OFF;
+			led_set(global_led_datas[S2MPB02_TORCH_LED_1]);
+		} else if (1 <= value && value <= 10) {
+			/* Turn on Torch Step 20mA ~ 200mA */
+			global_led_datas[S2MPB02_TORCH_LED_1]->data->brightness = value;
+			led_set(global_led_datas[S2MPB02_TORCH_LED_1]);
+		} else if (value == 100) {
+			/* Factory mode Turn on Torch */
+			global_led_datas[S2MPB02_TORCH_LED_1]->data->brightness = S2MPB02_TORCH_OUT_I_240MA;
+			led_set(global_led_datas[S2MPB02_TORCH_LED_1]);
+		} else {
+			pr_info("[LED]%s , Invalid value:%d\n", __func__, value);
+		}
 	} else {
-		pr_info("[LED]%s , Invalid value:%d\n", __func__, value);
+		if (value == 0) {
+			/* Turn off Torch */
+			global_led_datas[S2MPB02_TORCH_LED_1]->data->brightness = LED_OFF;
+			led_set(global_led_datas[S2MPB02_TORCH_LED_1]);
+		} else if (value == 1) {
+			/* Turn on Torch */
+			global_led_datas[S2MPB02_TORCH_LED_1]->data->brightness = S2MPB02_TORCH_OUT_I_60MA;
+			led_set(global_led_datas[S2MPB02_TORCH_LED_1]);
+		} else if (value == 100) {
+			/* Factory mode Turn on Torch */
+			global_led_datas[S2MPB02_TORCH_LED_1]->data->brightness = S2MPB02_TORCH_OUT_I_240MA;
+			led_set(global_led_datas[S2MPB02_TORCH_LED_1]);
+		} else {
+			pr_info("[LED]%s , Invalid value:%d\n", __func__, value);
+		}
 	}
 
 	if (value <= 0) {
@@ -282,6 +302,7 @@ static int of_s2mpb02_torch_dt(struct s2mpb02_dev *iodev,
 	}
 
 	pdata->num_leds = of_get_child_count(np);
+	torch_step_adjust = of_property_read_bool(np, "torch_step_adjust");
 
 	for_each_child_of_node(np, c_np) {
 		ret = of_property_read_u32(c_np, "id", &temp);

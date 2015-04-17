@@ -1755,14 +1755,14 @@ int Si47xx_dev_RDS_data_get(struct radio_data_t *data)
 int Si47xx_dev_RDS_timeout_set(u32 time_out)
 {
 	int ret = 0;
-	u32 jiffy_count = 0;
+	unsigned long jiffy_count = 0;
 
 	debug("Si47xx_dev_RDS_timeout_set called");
 	/****convert time_out(in milliseconds) into jiffies*****/
 
 	jiffy_count = msecs_to_jiffies(time_out);
 
-	debug("jiffy_count%d", jiffy_count);
+	debug("jiffy_count%ld", jiffy_count);
 
 	mutex_lock(&(Si47xx_dev->lock));
 

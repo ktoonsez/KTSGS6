@@ -440,6 +440,17 @@ void isdbt_isr_check(HANDLE hDevice)
 }
 #endif
 
+static ssize_t isdbt_ber_show(struct class *dev,
+                struct class_attribute *attr, char *buf)
+{
+	int type = 0;
+	sprintf(buf, "%d,%d", type, isdbt_pdata->BER);
+	pr_info("%s, type:%d, ber:%d\n", __func__, type, isdbt_pdata->BER);
+	return strlen(buf);
+}
+static CLASS_ATTR(ber, 0444,
+                isdbt_ber_show, NULL);
+
 long isdbt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	s32 res = BBM_NOK;
@@ -566,6 +577,13 @@ long isdbt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		bbm_com_byte_write(hInit, BBM_BUF_ENABLE, 0x01);
 		print_log(hInit, "[FC8180] IOCTL_ISDBT_TUNER_SELECT %d\n"
 		, (u32)info.buff[1]);
+		break;
+	case IOCTL_ISDBT_RF_BER:
+		err = copy_from_user((void *)&info, (void *)arg, size);
+		pr_err("[FC8300] IOCTL_ISDBT_RF_BER, CN(%d), BER_A(%d), BER_B(%d)\n",
+			(u8)info.buff[0], (u32)info.buff[1], (u32)info.buff[2]);
+		isdbt_pdata->BER = (int)info.buff[1];
+		res = 0;
 		break;
 	case IOCTL_ISDBT_TS_START:
 		pr_err("[FC8180] IOCTL_ISDBT_TS_START\n");
@@ -776,6 +794,8 @@ err:
 static int isdbt_probe(struct platform_device *pdev)
 {
 	int res = 0;
+	static struct class *isdbt_class;
+
 	pr_err("%s\n", __func__);
 
 	isdbt_pdata = isdbt_populate_dt_pdata(&pdev->dev);
@@ -817,10 +837,17 @@ static int isdbt_probe(struct platform_device *pdev)
 
 
 	INIT_LIST_HEAD(&(hInit->hHead));
+
+	isdbt_class = class_create(THIS_MODULE, "isdbt");
+	if (IS_ERR(isdbt_class)) {
+		pr_err("%s : class_create failed!\n", __func__);
+	} else {
+		res = class_create_file(isdbt_class, &class_attr_ber);
+		if (res)
+		pr_err("%s : failed to create device file in sysfs entries!\n", __func__);
+	}
+
 	return 0;
-
-
-
 }
 static int isdbt_remove(struct platform_device *pdev)
 {

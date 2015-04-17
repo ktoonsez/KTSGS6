@@ -386,7 +386,7 @@ static inline void eax_dma_xfer(struct runtime_data *prtd,
 	dma_addr_t dma_pos;
 
 	if (eax_dma_is_uhqa(prtd->dma_bytes)) {
-		if (!prtd->uhqa_dma_mono) {
+		if (!prtd->uhqa_dma_mono || !upcm_l || !upcm_r) {
 			pr_err("%s : UHQA DMA MONO Pointer is NULL\n", __func__);
 			return;
 		}
@@ -400,8 +400,11 @@ static inline void eax_dma_xfer(struct runtime_data *prtd,
 		} else {
 			prtd->dma_pos = dma_pos;
 		}
+
+		if (prtd->running && (prtd->dma_pos % prtd->dma_period) == 0)
+			snd_pcm_period_elapsed(prtd->substream);
 	} else {
-		if (!prtd->normal_dma_mono) {
+		if (!prtd->normal_dma_mono || !npcm_l || !npcm_r) {
 			pr_err("%s : NORMAL DMA MONO Pointer is NULL\n", __func__);
 			return;
 		}
@@ -415,10 +418,15 @@ static inline void eax_dma_xfer(struct runtime_data *prtd,
 		} else {
 			prtd->dma_pos = dma_pos;
 		}
-	}
 
-	if (prtd->running && (prtd->dma_pos % prtd->dma_period) == 0)
-		snd_pcm_period_elapsed(prtd->substream);
+		if (prtd->dma_period > NMIXBUF_BYTE * 2) {
+			if (prtd->running && (prtd->dma_pos % NMIXBUF_BYTE) == 0)
+				snd_pcm_period_elapsed(prtd->substream);
+		} else {
+			if (prtd->running && (prtd->dma_pos % prtd->dma_period) == 0)
+				snd_pcm_period_elapsed(prtd->substream);
+		}
+	}
 }
 
 static int eax_dma_hw_params(struct snd_pcm_substream *substream,
@@ -450,6 +458,9 @@ static int eax_dma_hw_params(struct snd_pcm_substream *substream,
 	spin_unlock_irq(&prtd->lock);
 
 	spin_lock_irq(&mi.lock);
+	if (mi.is_uhqa && !eax_dma_is_uhqa(prtd->dma_bytes))
+		return -EINVAL;
+
 	if (eax_dma_is_uhqa(prtd->dma_bytes)) {
 		mi.is_uhqa = true;
 		mi.mixbuf_size = totbytes / DMA_PERIOD_CNT / 8;

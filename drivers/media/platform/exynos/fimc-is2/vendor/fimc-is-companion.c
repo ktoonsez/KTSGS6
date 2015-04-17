@@ -166,7 +166,7 @@ static int fimc_is_comp_i2c_read(struct i2c_client *client, u16 addr, u16 *data)
 
 	err = i2c_transfer(client->adapter, msg, 2);
 	if (unlikely(err != 2)) {
-		pr_err("%s: register read fail\n", __func__);
+		err("%s: register read fail", __func__);
 		return -EIO;
 	}
 
@@ -204,12 +204,12 @@ static int fimc_is_comp_i2c_write(struct i2c_client *client ,u16 addr, u16 data)
 
         /* Retry occured */
         if (unlikely(retries < I2C_RETRY_COUNT)) {
-                pr_err("i2c_write: error %d, write (%04X, %04X), retry %d\n",
+                err("i2c_write: error %d, write (%04X, %04X), retry %d",
                         err, addr, data, I2C_RETRY_COUNT - retries);
         }
 
         if (unlikely(ret != 1)) {
-                pr_err("I2C does not work\n\n");
+                err("I2C does not work\n");
                 return -EIO;
         }
 
@@ -436,7 +436,7 @@ static int fimc_is_comp_load_binary(struct fimc_is_core *core, char *name)
 
 	fw_requested = 0;
 	size = fp->f_path.dentry->d_inode->i_size;
-	pr_info("start read sdcard, file path %s, size %d Bytes\n", fw_name, size);
+	info("start read sdcard, file path %s, size %d Bytes\n", fw_name, size);
 
 #ifdef USE_ION_ALLOC
 	handle = ion_alloc(core->fimc_ion_client, (size_t)size, 0,
@@ -658,7 +658,7 @@ static int fimc_is_comp_load_cal(struct fimc_is_core *core, char *name)
 
 	fimc_is_sec_get_sysfs_finfo(&sysfs_finfo);
 	fimc_is_sec_get_cal_buf(&cal_buf);
-	pr_info("Camera: SPI write cal data, name = %s\n", name);
+	info("Camera: SPI write cal data, name = %s\n", name);
 
 	if (!strcmp(name, COMP_LSC)) {
 		data_size = FIMC_IS_COMPANION_LSC_SIZE;
@@ -1034,13 +1034,13 @@ int fimc_is_comp_is_valid(void *core_data)
 	u16 companion_id = 0;
 
 	if (!core->spi1.device) {
-		pr_info("spi1 device is not available");
+		info("spi1 device is not available\n");
 		goto exit;
 	}
 
 	/* check validation(Read data must be 0x73C1) */
 	fimc_is_comp_single_read(core, 0x0, &companion_id, 2); /* reset addr : 0 */
-	pr_info("Companion vaildation: 0x%04x\n", companion_id);
+	info("Companion vaildation: 0x%04x\n", companion_id);
 
 exit:
 	return ret;
@@ -1052,14 +1052,14 @@ int fimc_is_comp_read_ver(void *core_data)
 	int ret = 0;
 
 	if (!core->spi1.device) {
-		pr_info("spi1 device is not available");
+		info("spi1 device is not available\n");
 		goto p_err;
 	}
 
 	companion_ver =  0;
 	/* check validation(Read data must be 0x73C1) */
 	fimc_is_comp_single_read(core, 0x02, &companion_ver, 2);
-	pr_info("Companion version: 0x%04x\n", companion_ver);
+	info("Companion version: 0x%04x\n", companion_ver);
 
 	if (companion_ver == 0x00A0) {
 		ret = fimc_is_comp_single_write(core, 0x0256, 0x0001);
@@ -1087,7 +1087,7 @@ u8 fimc_is_comp_is_compare_ver(void *core_data)
 	fimc_is_sec_get_cal_buf(&cal_buf);
 
 	if (!core->spi1.device) {
-		pr_info("spi1 device is not available");
+		info("spi1 device is not available\n");
 		goto exit;
 	}
 
@@ -1096,7 +1096,7 @@ u8 fimc_is_comp_is_compare_ver(void *core_data)
 	if (from_ver == def_ver) {
 		return cal_buf[99];
 	} else {
-		pr_err("FROM core version is invalid. version is %c%c%c%c\n", cal_buf[96], cal_buf[97], cal_buf[98], cal_buf[99]);
+		err("FROM core version is invalid. version is %c%c%c%c", cal_buf[96], cal_buf[97], cal_buf[98], cal_buf[99]);
 		return 0;
 	}
 exit:
@@ -1123,7 +1123,7 @@ int fimc_is_comp_loadcal(void *core_data)
 	}
 
 	if (!fimc_is_sec_check_from_ver(core)) {
-		pr_err("%s: error, not implemented! skip..\n", __func__);
+		err("%s: error, not implemented! skip..", __func__);
 		return 0;
 	}
 
@@ -1180,7 +1180,7 @@ retry:
 				err("fimc_is_comp_load_binary(%s) fail", COMP_LSC);
 				goto p_err;
 			}
-			pr_info("LSC from FROM loaded");
+			info("LSC from FROM loaded\n");
 		}
 #ifdef USE_DEFAULT_CAL
 		else {
@@ -1189,12 +1189,12 @@ retry:
 				err("fimc_is_comp_load_binary(%s) fail", COMP_DEFAULT_LSC);
 				goto p_err;
 			}
-			pr_info("Default LSC loaded");
+			info("Default LSC loaded\n");
 		}
 #endif
 		usleep_range(1000, 1000);
 	} else {
-		pr_info("Did not load LSC cal data");
+		info("Did not load LSC cal data\n");
 	}
 
 	/*Workaround : If FROM has ver.V003, Skip PDAF Cal loading to companion.*/
@@ -1214,7 +1214,7 @@ retry:
 				err("fimc_is_comp_load_binary(%s) fail", COMP_COEF_CAL);
 				goto p_err;
 			}
-			pr_info("COEF from FROM loaded");
+			info("COEF from FROM loaded\n");
 		}
 #ifdef USE_DEFAULT_CAL
 		else {
@@ -1223,12 +1223,12 @@ retry:
 				err("fimc_is_comp_load_binary(%s) fail", COMP_DEFAULT_COEF);
 				goto p_err;
 			}
-			pr_info("Default COEF loaded");
+			info("Default COEF loaded\n");
 		}
 #endif
 		usleep_range(1000, 1000);
 	} else {
-		pr_info("Did not load COEF cal data");
+		info("Did not load COEF cal data\n");
 	}
 
 	if (fimc_is_comp_is_compare_ver(core) >= FROM_VERSION_V004) {

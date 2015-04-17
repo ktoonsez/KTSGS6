@@ -516,7 +516,6 @@ int fimc_is_frame_swap_process_head(struct fimc_is_framemgr *this)
 		list_del(&next->list);
 		this->frame_pro_cnt--;
 		fimc_is_frame_s_process_shot(this, next);
-		head->has_fcount = false;
 	}
 
 	fimc_is_frame_s_process_shot(this, head);
@@ -585,7 +584,6 @@ int fimc_is_frame_open(struct fimc_is_framemgr *this, u32 buffers)
 
 		this->frame[i].kvaddr_shot = 0;
 		this->frame[i].dvaddr_shot = 0;
-		this->frame[i].has_fcount = false;
 		fimc_is_frame_s_free_shot(this, &this->frame[i]);
 	}
 
@@ -626,7 +624,6 @@ int fimc_is_frame_close(struct fimc_is_framemgr *this)
 
 		this->frame[i].kvaddr_shot = 0;
 		this->frame[i].dvaddr_shot = 0;
-		this->frame[i].has_fcount = false;
 	}
 
 	spin_unlock_irqrestore(&this->slock, flag);

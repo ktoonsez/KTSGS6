@@ -152,7 +152,6 @@ static const struct max77843_muic_vps_data muic_vps_table[] = {
 		.vps_name	= "Jig UART Off + VB",
 		.attached_dev	= ATTACHED_DEV_JIG_UART_OFF_VB_MUIC,
 	},
-#if defined(CONFIG_SEC_FACTORY)
 	{
 		.adc1k		= 0x00,
 		.adcerr		= 0x00,
@@ -164,7 +163,6 @@ static const struct max77843_muic_vps_data muic_vps_table[] = {
 		.vps_name	= "Jig UART On",
 		.attached_dev	= ATTACHED_DEV_JIG_UART_ON_MUIC,
 	},
-#endif /* CONFIG_SEC_FACTORY */
 	{
 		.adc1k		= 0x00,
 		.adcerr		= 0x00,
@@ -1610,6 +1608,7 @@ static int max77843_muic_attach_usb_path(struct max77843_muic_data *muic_data,
 	return ret;
 }
 
+#if defined(CONFIG_SEC_FACTORY)
 static muic_attached_dev_t check_jig_uart_on_factory_test
 			(struct max77843_muic_data *muic_data,	muic_attached_dev_t new_dev)
 {
@@ -1626,6 +1625,7 @@ static muic_attached_dev_t check_jig_uart_on_factory_test
 
 	return ret_ndev;
 }
+#endif
 
 #if defined(CONFIG_VBUS_NOTIFIER)
 static void max77843_muic_handle_vbus(struct max77843_muic_data *muic_data)
@@ -1892,9 +1892,11 @@ static int max77843_muic_handle_attach(struct max77843_muic_data *muic_data,
 		ret = max77843_muic_attach_uart_path(muic_data, new_dev);
 		break;
 	case ATTACHED_DEV_JIG_UART_ON_MUIC:
+#if defined(CONFIG_SEC_FACTORY)
 		new_dev = check_jig_uart_on_factory_test(muic_data, new_dev);
 		if (new_dev != ATTACHED_DEV_JIG_UART_ON_MUIC)
 			goto out;
+#endif
 		break;
 	case ATTACHED_DEV_TA_MUIC:
 #if defined(CONFIG_HV_MUIC_MAX77843_AFC)

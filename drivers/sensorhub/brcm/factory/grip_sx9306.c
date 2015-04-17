@@ -18,6 +18,7 @@
 #define VENDOR					"SEMTECH"
 #define CALIBRATION_FILE_PATH			"/efs/FactoryApp/grip_cal_data"
 #define SLOPE_FILE_PATH				"/efs/FactoryApp/grip_slope_data"
+#define TEMP_CAL_FILE_PATH			"/efs/FactoryApp/grip_temp_cal"
 #define TEMP_FILE_PATH				"/sys/class/power_supply/battery/temp"
 
 #define CAP_MAIN_FLAT				(481000)
@@ -37,6 +38,7 @@
 #define MSG2SSP_AP_MCU_GRIP_SET_CAL_DATA	(0x91)
 #define MSG2SSP_AP_MCU_GRIP_GET_CAL_DATA	(0x92)
 #define MSG2SSP_AP_MCU_GRIP_GET_RAW_DATA	(0x93)
+#define MSG2SSP_AP_MCU_GRIP_CAPMIN_DATA		(0x94)
 
 #define SX9306_GRIP_SENSOR
 #if defined(SX9306_GRIP_SENSOR)
@@ -52,7 +54,10 @@
 #endif
 
 #define SYNC_TIME				(1000)
+#define TEMP_ERROR				(0xFFFF)
 
+#define TEMP_LOW_BOUND				(200)
+#define TEMP_HIGH_BOUND				(400)
 
 enum GRIP_FACTORY_CMD {
 	GRIP_FACTORY_CMD_SHOW_ALL_REG = 0,
@@ -70,8 +75,8 @@ static int get_temp(void)
 {
 	struct file *filp = NULL;
 	mm_segment_t old_fs;
-	char temp_raw[sizeof(int)] = { 0, };
-	unsigned long val = 0;
+	char temp_raw[6] = { 0, };
+	long val = 0;
 	int ret = 0;
 
 	old_fs = get_fs();
@@ -89,24 +94,24 @@ static int get_temp(void)
 				__func__);
 		}
 		set_fs(old_fs);
-		return -EIO;
+		return TEMP_ERROR;
 	}
 
 	ret = filp->f_op->read(filp, temp_raw, sizeof(temp_raw), &filp->f_pos);
-	if (ret != sizeof(temp_raw)) {
+	if (ret <= 0) {
 		pr_err("[SSP]: %s - Can't read the temp from file\n",
 			__func__);
 		filp_close(filp, current->files);
 		set_fs(old_fs);
-		return -EIO;
+		return TEMP_ERROR;
 	}
 
 	filp_close(filp, current->files);
 	set_fs(old_fs);
 
-	if (kstrtoul(temp_raw, 10, &val)) {
+	if (kstrtol(temp_raw, 10, &val)) {
 		pr_err("[SSP]: %s - Invalid Argument\n", __func__);
-		return -EINVAL;
+		return TEMP_ERROR;
 	}
 
 	return (int)val;
@@ -209,6 +214,7 @@ void open_grip_caldata(struct ssp_data *data)
 	int useful_len = sizeof(data->gripcal.useful);
 	int offset_len = sizeof(data->gripcal.offset);
 	int len = cap_main_len + ref_cap_main_len + useful_len + offset_len;
+	int temp;
 	int ret;
 
 	old_fs = get_fs();
@@ -232,7 +238,7 @@ void open_grip_caldata(struct ssp_data *data)
 		set_fs(old_fs);
 		data->gripcal.threshold = data->gripcal.init_threshold;
 		data->gripcal.mode_set = true;
-		return;
+		goto slope;
 	}
 
 	ret = cal_filp->f_op->read(cal_filp, (char *)&data->gripcal,
@@ -251,10 +257,7 @@ void open_grip_caldata(struct ssp_data *data)
 
 	data->gripcal.mode_set = true;
 
-	pr_info("[SSP]: %s - (%d,%d,%d,%d)\n", __func__,
-		data->gripcal.cap_main, data->gripcal.ref_cap_main,
-		data->gripcal.useful, data->gripcal.offset);
-
+slope:
 	/* slope */
 	old_fs = get_fs();
 	set_fs(KERNEL_DS);
@@ -269,10 +272,10 @@ void open_grip_caldata(struct ssp_data *data)
 		else {
 			pr_info("[SSP]: %s - There is no slope file\n",
 				__func__);
+			data->gripcal.slope = 0;
 		}
-		data->gripcal.slope = 0;
 		set_fs(old_fs);
-		return;
+		goto temp;
 	}
 
 	ret = cal_filp->f_op->read(cal_filp, (char *)&data->gripcal.slope,
@@ -285,7 +288,49 @@ void open_grip_caldata(struct ssp_data *data)
 	filp_close(cal_filp, current->files);
 	set_fs(old_fs);
 
-	pr_info("[SSP]: %s - slope: %d\n", __func__, data->gripcal.slope);
+temp:
+	/* temp */
+	temp = get_temp();
+	if (temp != TEMP_ERROR)
+		data->gripcal.temp = temp;
+
+	/* temp_cal */
+	old_fs = get_fs();
+	set_fs(KERNEL_DS);
+
+	cal_filp = filp_open(TEMP_CAL_FILE_PATH, O_RDONLY,
+			S_IRUGO | S_IWUSR | S_IWGRP);
+	if (IS_ERR(cal_filp)) {
+		ret = PTR_ERR(cal_filp);
+		if (ret != -ENOENT)
+			pr_err("[SSP]: %s - Can't open temp_cal file.\n",
+				__func__);
+		else {
+			pr_info("[SSP]: %s - There is no temp_cal file\n",
+				__func__);
+			data->gripcal.temp_cal = 0;
+		}
+		goto exit;
+	}
+
+	ret = cal_filp->f_op->read(cal_filp, (char *)&data->gripcal.temp_cal,
+		sizeof(data->gripcal.temp_cal), &cal_filp->f_pos);
+	if (ret != sizeof(data->gripcal.temp_cal)) {
+		pr_err("[SSP]: %s - Can't read the temp_cal from file\n",
+			__func__);
+	}
+
+	filp_close(cal_filp, current->files);
+
+exit:
+	set_fs(old_fs);
+
+	pr_info("[SSP]: %s - cal = (%d,%d,%d,%d)\n", __func__,
+		data->gripcal.cap_main, data->gripcal.ref_cap_main,
+		data->gripcal.useful, data->gripcal.offset);
+	pr_info("[SSP]: %s - slope = %d\n", __func__, data->gripcal.slope);
+	pr_info("[SSP]: %s - temp = %d\n", __func__, data->gripcal.temp);
+	pr_info("[SSP]: %s - temp_cal = %d\n", __func__, data->gripcal.temp_cal);
 }
 
 int set_grip_calibration(struct ssp_data *data, bool set)
@@ -298,10 +343,10 @@ int set_grip_calibration(struct ssp_data *data, bool set)
 	int offset_len = sizeof(data->gripcal.offset);
 	int slope_len = sizeof(data->gripcal.slope);
 	int temp_len = sizeof(data->gripcal.temp);
+	int temp_cal_len = sizeof(data->gripcal.temp_cal);
 	int len = set_len+cap_main_len+ref_cap_main_len+useful_len+offset_len
-			+slope_len+temp_len;
+			+slope_len+temp_len+temp_cal_len;
 	char cal_data[len];
-	char temp_data[sizeof(int)] = { 0, };
 	int ret = 0;
 
 	if (!(data->uSensorState & (1 << GRIP_SENSOR))) {
@@ -310,11 +355,6 @@ int set_grip_calibration(struct ssp_data *data, bool set)
 			__func__, data->uSensorState);
 		return -EIO;
 	}
-
-	data->gripcal.temp = get_temp();
-	pr_info("[SSP]: %s - get_temp() = %d\n", __func__, data->gripcal.temp);
-
-	memcpy(temp_data, &data->gripcal.temp, sizeof(temp_data));
 
 	memcpy(&cal_data[0], &set, set_len);
 	memcpy(&cal_data[set_len], &data->gripcal.cap_main, cap_main_len);
@@ -328,6 +368,8 @@ int set_grip_calibration(struct ssp_data *data, bool set)
 		&data->gripcal.slope, slope_len);
 	memcpy(&cal_data[set_len+cap_main_len+ref_cap_main_len+useful_len+offset_len+slope_len],
 		&data->gripcal.temp, temp_len);
+	memcpy(&cal_data[set_len+cap_main_len+ref_cap_main_len+useful_len+offset_len+slope_len+temp_len],
+		&data->gripcal.temp_cal, temp_cal_len);
 
 	ret = set_grip_factory_data(data, cmd, cal_data, sizeof(cal_data));
 	if (ret != SUCCESS) {
@@ -341,6 +383,8 @@ int set_grip_calibration(struct ssp_data *data, bool set)
 
 static int get_grip_calibration(struct ssp_data *data)
 {
+	struct file *cal_filp = NULL;
+	mm_segment_t old_fs;
 	bool set = 0;
 	int cmd = MSG2SSP_AP_MCU_GRIP_GET_CAL_DATA;
 	int set_len = sizeof(set);
@@ -357,6 +401,13 @@ static int get_grip_calibration(struct ssp_data *data)
 			"[SSP]: grip sensor is not connected(0x%x)\n",
 			__func__, data->uSensorState);
 		return -EIO;
+	}
+
+	if (data->gripcal.temp < TEMP_LOW_BOUND ||
+		data->gripcal.temp > TEMP_HIGH_BOUND) {
+		pr_info("[SSP]: %s - Skip calibration temp = %d\n",
+			__func__, data->gripcal.temp);
+		return -EINVAL;
 	}
 
 	ret = get_grip_factory_data(data, cmd, cal_data, sizeof(cal_data));
@@ -388,9 +439,35 @@ static int get_grip_calibration(struct ssp_data *data)
 		&cal_data[set_len+cap_main_len+ref_cap_main_len+useful_len],
 		offset_len);
 
-	pr_info("[SSP]: Grip calibration - %d,%d,%d,%d\n",
+	old_fs = get_fs();
+	set_fs(KERNEL_DS);
+
+	cal_filp = filp_open(TEMP_CAL_FILE_PATH,
+			O_CREAT | O_TRUNC | O_WRONLY | O_SYNC,
+			S_IRUGO | S_IWUSR | S_IWGRP);
+	if (IS_ERR(cal_filp)) {
+		pr_err("[SSP]: %s - Can't open temp_cal file\n",
+			__func__);
+		goto exit;
+	}
+
+	ret = cal_filp->f_op->write(cal_filp, (char *)&data->gripcal.temp,
+		sizeof(data->gripcal.temp), &cal_filp->f_pos);
+	if (ret != sizeof(data->gripcal.temp)) {
+		pr_err("[SSP]: %s - Can't write the temp_cal to file\n",
+			__func__);
+	} else {
+		data->gripcal.temp_cal = data->gripcal.temp;
+	}
+
+	filp_close(cal_filp, current->files);
+exit:
+	set_fs(old_fs);
+
+	pr_info("[SSP]: Grip calibration - %d,%d,%d,%d temp_cal = %d\n",
 		data->gripcal.cap_main, data->gripcal.ref_cap_main,
-		data->gripcal.useful, data->gripcal.offset);
+		data->gripcal.useful, data->gripcal.offset,
+		data->gripcal.temp_cal);
 
 	return SUCCESS;
 }
@@ -844,14 +921,14 @@ static ssize_t slope_store(struct device *dev,
 	struct file *cal_filp = NULL;
 	unsigned long val;
 	mm_segment_t old_fs;
+	char slope = 0;
 	int ret = 0;
 
 	if (kstrtoul(buf, 10, &val)) {
 		pr_err("[SSP]: %s - Invalid Argument\n", __func__);
 		return -EINVAL;
 	}
-
-	data->gripcal.slope = (char)val;
+	slope = (char)val;
 
 	old_fs = get_fs();
 	set_fs(KERNEL_DS);
@@ -866,9 +943,9 @@ static ssize_t slope_store(struct device *dev,
 		return -EIO;
 	}
 
-	ret = cal_filp->f_op->write(cal_filp, (char *)&data->gripcal.slope,
-		sizeof(data->gripcal.slope), &cal_filp->f_pos);
-	if (ret != sizeof(data->gripcal.slope)) {
+	ret = cal_filp->f_op->write(cal_filp, (char *)&slope,
+		sizeof(slope), &cal_filp->f_pos);
+	if (ret != sizeof(slope)) {
 		pr_err("[SSP]: %s - Can't write the slope data to file\n",
 			__func__);
 		ret = -EIO;
@@ -877,12 +954,74 @@ static ssize_t slope_store(struct device *dev,
 	filp_close(cal_filp, current->files);
 	set_fs(old_fs);
 
-	if (ret < 0)
+	if (ret < 0) {
 		return ret;
-	else
+	} else {
+		data->gripcal.slope = slope;
 		return count;
+	}
 }
 
+static ssize_t temp_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct ssp_data *data = dev_get_drvdata(dev);
+	return snprintf(buf, PAGE_SIZE, "%d\n", data->gripcal.temp);
+}
+
+static ssize_t temp_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	return count;
+}
+
+static ssize_t temp_cal_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct ssp_data *data = dev_get_drvdata(dev);
+	pr_info("[SSP]: %s - temp_cal = %d\n", __func__, data->gripcal.temp_cal);
+	return snprintf(buf, PAGE_SIZE, "%d\n", data->gripcal.temp_cal);
+}
+
+static ssize_t temp_cal_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	return count;
+}
+
+static ssize_t capmain_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct ssp_data *data = dev_get_drvdata(dev);
+	int cmd = MSG2SSP_AP_MCU_GRIP_CAPMIN_DATA;
+	s32 cap_main_comp = 0;
+	s32 cap_main_real = 0;
+	s32 cap_main_cal = 0;
+	int cap_main_comp_len = sizeof(cap_main_comp);
+	int cap_main_real_len = sizeof(cap_main_real);
+	int cap_main_cal_len = sizeof(cap_main_cal);
+	int len = cap_main_comp_len + cap_main_real_len + cap_main_cal_len;
+	char raw_data[len];
+	int ret = 0;
+
+	ret = get_grip_factory_data(data, cmd, raw_data, sizeof(raw_data));
+	if (ret != SUCCESS) {
+		pr_err("[SSP]: %s - get_grip_factory_data fail %d\n",
+			__func__, ret);
+		return -EIO;
+	}
+
+	memcpy(&cap_main_comp, &raw_data[0], cap_main_comp_len);
+	memcpy(&cap_main_real, &raw_data[cap_main_comp_len], cap_main_real_len);
+	memcpy(&cap_main_cal, &raw_data[cap_main_comp_len+cap_main_real_len], cap_main_cal_len);
+
+	pr_err("[SSP]: %s - %d,%d,%d,%d,%d,%d\n", __func__,
+		cap_main_comp, cap_main_real, cap_main_cal,
+		data->gripcal.slope, data->gripcal.temp, data->gripcal.temp_cal);
+
+	return snprintf(buf, PAGE_SIZE, "%d,%d,%d\n",
+			cap_main_comp, cap_main_real, cap_main_cal);
+}
 
 static DEVICE_ATTR(name, S_IRUGO, name_show, NULL);
 static DEVICE_ATTR(vendor, S_IRUGO, vendor_show, NULL);
@@ -901,6 +1040,9 @@ static DEVICE_ATTR(register_write, S_IRUGO | S_IWUSR | S_IWGRP,
 		register_write_show, register_write_store);
 static DEVICE_ATTR(start, S_IRUGO | S_IWUSR | S_IWGRP, start_show, start_store);
 static DEVICE_ATTR(slope, S_IRUGO | S_IWUSR | S_IWGRP, slope_show, slope_store);
+static DEVICE_ATTR(temp, S_IRUGO | S_IWUSR | S_IWGRP, temp_show, temp_store);
+static DEVICE_ATTR(temp_cal, S_IRUGO | S_IWUSR | S_IWGRP, temp_cal_show, temp_cal_store);
+static DEVICE_ATTR(capmain, S_IRUGO, capmain_show, NULL);
 
 
 static struct device_attribute *grip_attrs[] = {
@@ -916,6 +1058,9 @@ static struct device_attribute *grip_attrs[] = {
 	&dev_attr_register_write,
 	&dev_attr_start,
 	&dev_attr_slope,
+	&dev_attr_temp,
+	&dev_attr_temp_cal,
+	&dev_attr_capmain,
 	NULL,
 };
 

@@ -411,5 +411,15 @@ struct esxxx_platform_data *es705_populate_dt_pdata(struct device *dev)
 	else
 		dev_info(dev, "%s: vs_filename=%s", __func__, pdata->vs_filename);
 #endif
+
+	if (of_find_property(node, "adnc,use_dhwpt", NULL)) {
+		pdata->use_dhwpt = 1;
+		dev_info(dev, "%s(): adnc,use_dhwpt exist in device tree\n",
+					__func__);
+	} else {
+		pdata->use_dhwpt = 0;
+		dev_info(dev, "%s(): adnc,use_dhwpt not exist in device tree\n",
+					__func__);
+	}
 	return pdata;
 }

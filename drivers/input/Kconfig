@@ -207,6 +207,12 @@ config CERTIFY_HALL
 	help
 	  Enable Certify Hall Feature
 
+config CERTIFY_HALL_NFC_WA
+        tristate "Enable CERTIFY HALL"
+        default n
+        help
+          Enable Certify Hall & NFC workaround
+
 config INPUT_EXPANDED_ABS
 	tristate "Expanded ABS"
 	help

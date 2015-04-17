@@ -581,8 +581,8 @@ static void lli_link_reload(struct link_device *ld)
 static void lli_link_off(struct link_device *ld)
 {
 	mif_err("%s: PM %s <%pf>\n", ld->name, FUNC, CALLER);
+	mipi_lli_intr_disable();
 	stop_pm(ld_to_mem_link_device(ld));
-	mipi_lli_reload();
 }
 
 static bool lli_link_unmounted(struct link_device *ld)
