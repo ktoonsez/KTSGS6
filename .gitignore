@@ -38,6 +38,7 @@ modules.builtin
 *.orig
 *zImage
 *zImage-dtb
+*zImage.gz-dtb
 *boot.img
 *ramdisk
 *Image
