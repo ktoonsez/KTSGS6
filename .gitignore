@@ -38,7 +38,7 @@ modules.builtin
 *.orig
 *zImage
 *zImage-dtb
-*zImage.gz-dtb
+arch/arm64/boot/Image.gz-dtb
 *boot.img
 *ramdisk
 *Image
@@ -93,6 +93,8 @@ firmware/*.o
 firmware/*.fw
 
 arch/arm/include/generated*
+arch/arm64/include/generated*
+arch/arm64/include/generated/asm/*
 
 arch/arm/boot/compressed/lib1funcs.S
 firmware/tsp_melfas/CORE.fw
