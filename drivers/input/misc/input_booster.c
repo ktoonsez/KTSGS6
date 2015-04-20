@@ -878,7 +878,7 @@ static ssize_t input_booster_set_level(struct class *dev,
 	if(val<0){
 		for (type = 0; type < g_data->ndevices; type++) {
 			input_booster_send_event(type, BOOSTER_MODE_FORCE_OFF);
-			printk( "%s: type = %s BOOSTER_MODE_FORCE_OFF\n",__func__, booster_device_name[type]);
+			//printk( "%s: type = %s BOOSTER_MODE_FORCE_OFF\n",__func__, booster_device_name[type]);
 		}
 	}
 	else
