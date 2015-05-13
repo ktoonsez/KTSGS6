@@ -442,7 +442,6 @@ static int fb_state_change(struct notifier_block *nb,
 	case FB_BLANK_POWERDOWN:
 		lcd_is_on = false;
 		pr_info("LCD is off\n");
-		screen_is_on = false;
 
 #ifdef CONFIG_HOTPLUG_THREAD_STOP
 		if (thread_manage_wq) {
@@ -460,7 +459,6 @@ static int fb_state_change(struct notifier_block *nb,
 		 * turned on.
 		 */
 		lcd_is_on = true;
-		screen_is_on = true;
 		pr_info("LCD is on\n");
 
 #ifdef CONFIG_HOTPLUG_THREAD_STOP
@@ -490,7 +488,9 @@ static int __ref __cpu_hotplug(bool out_flag, enum hotplug_cmd cmd)
 #if defined(CONFIG_SCHED_HMP)
 	int hotplug_out_limit = 0;
 #endif
-
+	if (ktoonservative_is_active && ktoonservative_hp_active)
+		return 0;
+	
 	if (exynos_dm_hotplug_disabled())
 		return 0;
 
