@@ -57,6 +57,8 @@
 #include "es705-uart-common.h"
 #include "es705-veq-params.h"
 
+#include <linux/variant_detection.h>
+
 #define CHECK_ROUTE_STATUS_AND_RECONFIG
 #if defined(CHECK_ROUTE_STATUS_AND_RECONFIG)
 static struct delayed_work chk_route_st_and_recfg_work;
@@ -5518,6 +5520,8 @@ int es705_core_init(struct device *dev)
 {
 	struct esxxx_platform_data *pdata = dev->platform_data;
 	int rc = 0;
+	if (model_type == VARDET_G920F || model_type == VARDET_G920I || model_type == VARDET_G925F || model_type == VARDET_G925I)
+		return rc;
 
 	if (pdata == NULL) {
 		dev_err(dev, "%s(): pdata is NULL", __func__);
@@ -5713,7 +5717,9 @@ EXPORT_SYMBOL_GPL(es705_core_init);
 static __init int es705_init(void)
 {
 	int rc = 0;
-
+	if (model_type == VARDET_G920F || model_type == VARDET_G920I || model_type == VARDET_G925F || model_type == VARDET_G925I)
+		return rc;
+		
 	mutex_init(&es705_priv.api_mutex);
 	mutex_init(&es705_priv.pm_mutex);
 	mutex_init(&es705_priv.cvq_mutex);
@@ -5772,6 +5778,9 @@ module_init(es705_init);
 
 static __exit void es705_exit(void)
 {
+	if (model_type == VARDET_G920F || model_type == VARDET_G920I || model_type == VARDET_G925F || model_type == VARDET_G925I)
+		return;
+
 #if defined(SAMSUNG_ES705_FEATURE)
 	es705_unregister_input_device(&es705_priv);
 #endif

@@ -92,6 +92,9 @@
 #include <linux/rkp_entry.h> 
 #endif //CONFIG_TIMA_RKP
 
+#include <linux/variant_detection.h>
+unsigned int model_type = VARDET_UNKNOWN;
+
 static int kernel_init(void *);
 
 extern void init_IRQ(void);
@@ -590,6 +593,54 @@ asmlinkage void __init start_kernel(void)
 	page_alloc_init();
 
 	pr_notice("Kernel command line: %s\n", boot_command_line);
+	if (strstr(boot_command_line, "bootloader=G920F"))
+	{
+		pr_alert("FOUND G920F VARIANT");
+		model_type = VARDET_G920F;
+	}
+	else if (strstr(boot_command_line, "bootloader=G920I"))
+	{
+		pr_alert("FOUND G920I VARIANT");
+		model_type = VARDET_G920I;
+	}
+	else if (strstr(boot_command_line, "bootloader=G920T"))
+	{
+		pr_alert("FOUND G920T VARIANT");
+		model_type = VARDET_G920T;
+	}
+	else if (strstr(boot_command_line, "bootloader=G920W8"))
+	{
+		pr_alert("FOUND G920W8 VARIANT");
+		model_type = VARDET_G920W8;
+	}
+	else if (strstr(boot_command_line, "bootloader=G920P"))
+	{
+		pr_alert("FOUND G920P VARIANT");
+		model_type = VARDET_G920P;
+	}
+	else if (strstr(boot_command_line, "bootloader=G925F"))
+	{
+		pr_alert("FOUND G925F VARIANT");
+		model_type = VARDET_G925F;
+	}
+	else if (strstr(boot_command_line, "bootloader=G925I"))
+	{
+		pr_alert("FOUND G925I VARIANT");
+		model_type = VARDET_G925I;
+	}
+	else if (strstr(boot_command_line, "bootloader=G925T"))
+	{
+		pr_alert("FOUND G925T VARIANT");
+		model_type = VARDET_G925T;
+	}
+	else if (strstr(boot_command_line, "bootloader=G925W8"))
+	{
+		pr_alert("FOUND G925W8 VARIANT");
+		model_type = VARDET_G925W8;
+	}
+	else
+		pr_alert("FOUND UNKNOWN VARIANT");
+	
 	parse_early_param();
 	parse_args("Booting kernel", static_command_line, __start___param,
 		   __stop___param - __start___param,

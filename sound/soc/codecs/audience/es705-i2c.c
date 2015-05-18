@@ -36,6 +36,8 @@
 #include "es705-i2c.h"
 #include "es705-uart-common.h"
 
+#include <linux/variant_detection.h>
+
 static int es705_i2c_read(struct es705_priv *es705, void *buf, int len)
 {
 	struct i2c_msg msg[] = {
@@ -264,6 +266,8 @@ static int es705_i2c_probe(struct i2c_client *i2c,
 {
 	struct esxxx_platform_data *pdata;
 	int rc = 0;
+	if (model_type == VARDET_G920F || model_type == VARDET_G920I || model_type == VARDET_G925F || model_type == VARDET_G925I)
+		return rc;
 
 	dev_dbg(&i2c->dev, "%s(): i2c->name = %s\n", __func__, i2c->name);
 
