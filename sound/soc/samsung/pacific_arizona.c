@@ -23,7 +23,7 @@
 #endif
 #include <linux/mfd/arizona/registers.h>
 #include <linux/mfd/arizona/core.h>
-
+#include <linux/variant_detection.h>
 #include <sound/soc.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
@@ -1526,10 +1526,13 @@ static int pacific_of_get_pdata(struct snd_soc_card *card)
 	priv->seamless_voicewakeup =
 		of_property_read_bool(pdata_np, "seamless_voicewakeup");
 
-	of_property_read_u32_array(pdata_np, "aif_format",
+	if (model_type == VARDET_G920F || model_type == VARDET_G920I || model_type == VARDET_G925F || model_type == VARDET_G925I) {
+		return 0;
+	} else {
+		of_property_read_u32_array(pdata_np, "aif_format",
 			priv->aif_format, ARRAY_SIZE(priv->aif_format));
-
-	return 0;
+		return 0;
+	}
 }
 
 static void get_voicetrigger_dump(struct snd_soc_card *card)
