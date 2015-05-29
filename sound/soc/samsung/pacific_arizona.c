@@ -1526,7 +1526,8 @@ static int pacific_of_get_pdata(struct snd_soc_card *card)
 	priv->seamless_voicewakeup =
 		of_property_read_bool(pdata_np, "seamless_voicewakeup");
 
-	if (model_type == VARDET_G920F || model_type == VARDET_G920I || model_type == VARDET_G925F || model_type == VARDET_G925I) {
+	/* if phone variant requires aif_format from dtb blob, read it */
+	if (variant_aif_required == NO_AIF) {
 		return 0;
 	} else {
 		of_property_read_u32_array(pdata_np, "aif_format",
