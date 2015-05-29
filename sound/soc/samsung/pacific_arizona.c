@@ -1526,6 +1526,7 @@ static int pacific_of_get_pdata(struct snd_soc_card *card)
 	priv->seamless_voicewakeup =
 		of_property_read_bool(pdata_np, "seamless_voicewakeup");
 
+	#ifdef CONFIG_CHECK_AIF
 	/* if phone variant requires aif_format from dtb blob, read it */
 	if (variant_aif_required == NO_AIF) {
 		return 0;
@@ -1534,6 +1535,11 @@ static int pacific_of_get_pdata(struct snd_soc_card *card)
 			priv->aif_format, ARRAY_SIZE(priv->aif_format));
 		return 0;
 	}
+	#else
+	of_property_read_u32_array(pdata_np, "aif_format",
+			priv->aif_format, ARRAY_SIZE(priv->aif_format));
+		return 0;
+	#endif
 }
 
 static void get_voicetrigger_dump(struct snd_soc_card *card)

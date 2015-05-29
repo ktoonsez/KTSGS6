@@ -5520,9 +5520,10 @@ int es705_core_init(struct device *dev)
 {
 	struct esxxx_platform_data *pdata = dev->platform_data;
 	int rc = 0;
+	#ifdef CONFIG_CHECK_AIF
 	if (variant_aif_required == NO_AIF)
 		return rc;
-
+	#endif
 	if (pdata == NULL) {
 		dev_err(dev, "%s(): pdata is NULL", __func__);
 		rc = -EIO;
@@ -5717,9 +5718,10 @@ EXPORT_SYMBOL_GPL(es705_core_init);
 static __init int es705_init(void)
 {
 	int rc = 0;
+	#ifdef CONFIG_CHECK_AIF
 	if (variant_aif_required == NO_AIF)
 		return rc;
-		
+	#endif
 	mutex_init(&es705_priv.api_mutex);
 	mutex_init(&es705_priv.pm_mutex);
 	mutex_init(&es705_priv.cvq_mutex);
@@ -5778,9 +5780,10 @@ module_init(es705_init);
 
 static __exit void es705_exit(void)
 {
+	#ifdef CONFIG_CHECK_AIF
 	if (variant_aif_required == NO_AIF)
 		return;
-
+	#endif
 #if defined(SAMSUNG_ES705_FEATURE)
 	es705_unregister_input_device(&es705_priv);
 #endif

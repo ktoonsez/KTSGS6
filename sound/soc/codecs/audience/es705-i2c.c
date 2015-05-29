@@ -266,9 +266,10 @@ static int es705_i2c_probe(struct i2c_client *i2c,
 {
 	struct esxxx_platform_data *pdata;
 	int rc = 0;
+	#ifdef CONFIG_CHECK_AIF
 	if (variant_aif_required == NO_AIF)
 		return rc;
-
+	#endif
 	dev_dbg(&i2c->dev, "%s(): i2c->name = %s\n", __func__, i2c->name);
 
 	pdata = es705_populate_dt_pdata(&i2c->dev);

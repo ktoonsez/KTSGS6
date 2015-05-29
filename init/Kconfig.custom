@@ -1,0 +1,223 @@
+menu "Custom Kernel Options"
+
+menu "Device tree options"
+choice
+    prompt "Target Device"
+    default G_NINE
+    help
+	Select the device tree to be built during compilation
+
+config G_NINE
+    bool "Build for G920 and variants"
+    help
+	Build for G920 F / I / S / G / K / L / T / W8 / P
+
+config G_NINE_F
+    bool "Build for G925 and variants"
+    help
+	Build for G925 F / I / S / G / K / L / T / W8 / P
+
+endchoice
+
+config CHECK_AIF
+    bool "Add runtime checks for aif_format register from dtb blob"
+    help
+	Add checks intot he kernel to determine if device required the aif_format register
+	passed from dtb blob to the arizona sound framework
+
+endmenu
+
+menu "Compiler Options"
+choice
+    prompt "Compiler optimization level"
+    default CC_OPTIMIZE_FOR_NORMAL
+    help
+      This option selects the compilation optimization level.
+
+    config CC_OPTIMIZE_FOR_OSIZE
+	bool "Compile Level -Os"
+	help
+	  Enabling this option will pass "-Os" to gcc
+	  resulting in a smaller kernel.
+
+    config CC_OPTIMIZE_FOR_OTWO
+	bool "Compile Level -O2"
+	help
+	  Enabling this option will pass "-O2" to gcc
+	  resulting in a larger kernel compared to -Os but with possible,
+	  minor performance improvements.
+	  
+	  This is the recommended setting
+
+    config CC_OPTIMIZE_FOR_OTHREE
+	bool "Compile Level -O3"
+	depends on !CFLAGS_OPT
+	help
+	  Enabling this option will pass "-O3" to gcc
+	  resulting in a larger kernel but possible higher performance
+	  compared with -O2
+
+	  -O3 can cause problems with applications however and is not recommended
+
+    config CC_OPTIMIZE_FOR_OFAST
+	bool "Compile level -Ofast"
+	depends on !CFLAGS_OPT
+	help
+	  Enabling this option will pass "-Ofast" to gcc
+	  resulting in a larger kernel but possible higher performance
+	  compared with -Os -O2 and -O3
+
+	  -Ofast can cause problems with applications however and is not recommended
+
+endchoice
+config KFLAGS_GRAPHITE
+     bool "Enable Graphite compiler optimisations"
+     help
+          Pass Graphite optimisation flags to the compiler.  May make the kernel
+          faster, although it can lead to stability issues.
+	  Pass fgraphite-identity -floop-block -floop-strip-mine -ftree-loop-distribution
+	  -ftree-loop-linear -fgraphite to KBUILD_CFLAGS
+
+config KFLAGS_OPT
+     bool "Enable Compiler optimisations"
+     help
+          Pass Other optimisation flags to the compiler.  May make the kernel
+          faster, although it can lead to stability issues
+	  Pass fmodulo-sched -fmodulo-sched-allow-regmoves -ffast-math to KBUILD_CFLAGS
+
+config CFLAGS_OPT
+     bool "Enable CFlags optimisations"
+     help
+          Pass -funswitch-loops -fpredictive-commoning -fgcse-after-reload -ftree-vectorize -
+	  fipa-cp-clone -fsingle-precision-constant -pipe to CFLAGS_KERNEL
+
+endmenu
+
+menu "CPU Governor Options"
+config INT_AGRESSIVE
+  bool "Agressive Interactive governor"
+  help 
+    Make CPU Interactive governor more agressive
+
+config OND_AGRESSIVE
+  bool "Agressive OnDemand governor"
+  help 
+    Make CPU Ondemand governor more agressive
+
+endmenu
+
+menu "CPU Speed Options"
+
+config BUS_BOOST
+   bool "Enable higher memory bus speeds over larger frequency range"
+   help
+      This enables a higher memory bus frequency over a larger frequency range
+      This will increase performance at a slight cost to battery life
+
+choice
+  prompt "CPU Maximum frequency Options - Apollo Cores (.LITTLE)"
+  default AP_FIVE
+  help
+    This sets the Maximum CPU frequency level"
+
+  config AP_FIVE
+    bool "Standard 1.5ghz clock speed"
+    help
+      Use the default Apollo 1.5GHZ maximum clock speed
+
+  config AP_SIX
+    bool "Enable 1.6ghz maximum Overclock"
+    help
+      Enable Apollo CPU maximum Overclock to 1.6ghz
+
+  config AP_SEVEN
+    bool "Enable 1.7ghz maximum Overclock"
+    help
+      Enable Apollo CPU maximum Overclock to 1.7ghz
+
+endchoice
+choice
+  prompt "CPU Minimum frequency Options - Apollo Cores (.LITTLE)
+  default AP_MIN_FOUR
+  help
+      This sets the minimum frequency level
+
+  config AP_MIN_FOUR
+    bool "Standard 400 MHz minimum clock speed"
+    help
+       Use the default Apollo 400 MHz mnimum clock speed
+
+  config AP_MIN_TWO
+    bool "Enable 200 MHz minimum clock speed"
+    help
+       Enable 200 MHz minimum of Apollo.  This may save significant
+       battery but can increase latency
+
+endchoice
+
+choice
+  prompt "CPU Maximum frequency Options - Atlas Cores (.big)"
+  default At_ONE
+  help
+    This sets the Maximum CPU frequency level"
+
+  config AT_ONE
+    bool "Standard 2.1ghz clock speed"
+    help
+      Use the default Atlas 2.1GHZ clock speed
+
+  config AT_TWO
+    bool "Enable 2.2Ghz maximum Overclock"
+    help
+      Enable Atlas CPU maximum Overclock to 2.2ghz
+
+  config AT_THREE
+    bool "Enable 2.3ghz maximum Overclock"
+    help
+      Enable Atlas CPU maximum Overclock to 2.3ghz
+
+endchoice
+
+choice
+  prompt "CPU Minimum frequency Options - Atlas Cores (.big)
+  default AT_MIN_EIGHT
+  help
+      This sets the minimum frequency level
+
+  config AT_MIN_EIGHT
+    bool "Standard 800 MHz minimum clock speed"
+    help
+       Use the default Atlas 800 MHz mnimum clock speed
+
+  config AT_MIN_TWO
+    bool "Enable 200 MHz minimum clock speed"
+    help
+       Enable 200 MHz minimum of Atlas.  This may save significant
+       battery but can increase latency
+
+endchoice
+endmenu
+
+menu "GPU Options"
+config MALI_SEVEN
+   bool "Enable Mali GPU max 772Mhz"
+   help
+      Enable maximum MALI GPU speed increase to 772Mhz
+
+config MALI_INT_AGRESSIVE
+   bool "Enable agressive Mali interactive governor"
+   help
+      Makes Mali interactive GPU governor more agressive
+
+endmenu
+
+menu "Filesystem Options"
+config FSYNC_OFF
+   bool "Disable filesystem FSync() function"
+   help
+      Disabled filesystem FSync() function.  Can improve performance
+      but has a slightly higher chance of data corruption on a crash
+
+endmenu
+endmenu
+
