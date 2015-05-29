@@ -8,5 +8,7 @@
 #define VARDET_G925I	7
 #define VARDET_G925T	8
 #define VARDET_G925W8	9
+#define VARDET_G920S	10
+#define VARDET_G925S	11
 
 extern unsigned int model_type;

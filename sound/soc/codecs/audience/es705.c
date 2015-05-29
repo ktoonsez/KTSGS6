@@ -5520,7 +5520,7 @@ int es705_core_init(struct device *dev)
 {
 	struct esxxx_platform_data *pdata = dev->platform_data;
 	int rc = 0;
-	if (model_type == VARDET_G920F || model_type == VARDET_G920I || model_type == VARDET_G925F || model_type == VARDET_G925I)
+	if (model_type == VARDET_G920F || model_type == VARDET_G920I || model_type == VARDET_G925F || model_type == VARDET_G925I || model_type == VARDET_G920S || model_type == VARDET_G925S)
 		return rc;
 
 	if (pdata == NULL) {
@@ -5717,7 +5717,7 @@ EXPORT_SYMBOL_GPL(es705_core_init);
 static __init int es705_init(void)
 {
 	int rc = 0;
-	if (model_type == VARDET_G920F || model_type == VARDET_G920I || model_type == VARDET_G925F || model_type == VARDET_G925I)
+	if (model_type == VARDET_G920F || model_type == VARDET_G920I || model_type == VARDET_G925F || model_type == VARDET_G925I || model_type == VARDET_G920S || model_type == VARDET_G925S)
 		return rc;
 		
 	mutex_init(&es705_priv.api_mutex);
@@ -5778,7 +5778,7 @@ module_init(es705_init);
 
 static __exit void es705_exit(void)
 {
-	if (model_type == VARDET_G920F || model_type == VARDET_G920I || model_type == VARDET_G925F || model_type == VARDET_G925I)
+	if (model_type == VARDET_G920F || model_type == VARDET_G920I || model_type == VARDET_G925F || model_type == VARDET_G925I || model_type == VARDET_G920S || model_type == VARDET_G925S)
 		return;
 
 #if defined(SAMSUNG_ES705_FEATURE)

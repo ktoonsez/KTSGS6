@@ -266,7 +266,7 @@ static int es705_i2c_probe(struct i2c_client *i2c,
 {
 	struct esxxx_platform_data *pdata;
 	int rc = 0;
-	if (model_type == VARDET_G920F || model_type == VARDET_G920I || model_type == VARDET_G925F || model_type == VARDET_G925I)
+	if (model_type == VARDET_G920F || model_type == VARDET_G920I || model_type == VARDET_G925F || model_type == VARDET_G925I || model_type == VARDET_G920S || model_type == VARDET_G925S)
 		return rc;
 
 	dev_dbg(&i2c->dev, "%s(): i2c->name = %s\n", __func__, i2c->name);
