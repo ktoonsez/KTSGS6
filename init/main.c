@@ -638,16 +638,6 @@ asmlinkage void __init start_kernel(void)
 		pr_alert("FOUND G925W8 VARIANT");
 		model_type = VARDET_G925W8;
 	}
-	else if (strstr(boot_command_line, "bootloader=G920S"))
-	{
-		pr_alert("FOUND G920S VARIANT");
-		model_type = VARDET_G920S;
-	}
-	else if (strstr(boot_command_line, "bootloader=G925S"))
-	{
-		pr_alert("FOUND G925S VARIANT");
-		model_type = VARDET_G925S;
-	}
 	else
 		pr_alert("FOUND UNKNOWN VARIANT");
 	

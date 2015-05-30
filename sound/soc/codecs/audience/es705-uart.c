@@ -425,7 +425,7 @@ static int es705_uart_probe_thread(void *ptr)
 {
 	int rc = 0;
 	struct device *dev = (struct device *)ptr;
-	if (model_type == VARDET_G920F || model_type == VARDET_G920I || model_type == VARDET_G925F || model_type == VARDET_G925I || model_type == VARDET_G920S || model_type == VARDET_G925S)
+	if (model_type == VARDET_G920F || model_type == VARDET_G920I || model_type == VARDET_G925F || model_type == VARDET_G925I)
 		return rc;
 
 	rc = es705_uart_open(&es705_priv);
