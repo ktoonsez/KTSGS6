@@ -95,6 +95,7 @@
 #include <linux/variant_detection.h>
 unsigned int model_type = VARDET_UNKNOWN;
 unsigned int variant_aif_required = NO_AIF;
+unsigned int variant_edge = NOT_EDGE;
 
 static int kernel_init(void *);
 
@@ -600,60 +601,70 @@ asmlinkage void __init start_kernel(void)
 	{
 		pr_alert("FOUND G920F VARIANT");
 		variant_aif_required = NO_AIF;
+		variant_edge = NOT_EDGE;
 		model_type = VARDET_G920F;
 	}
 	else if (strstr(boot_command_line, "bootloader=G925F"))
 	{
 		pr_alert("FOUND G925F VARIANT");
 		variant_aif_required = NO_AIF;
+		variant_edge = IS_EDGE;
 		model_type = VARDET_G925F;
 	}
 	else if (strstr(boot_command_line, "bootloader=G920I"))
 	{
 		pr_alert("FOUND G920I VARIANT");
 		variant_aif_required = NO_AIF;
+		variant_edge = NOT_EDGE;
 		model_type = VARDET_G920I;
 	}
 	else if (strstr(boot_command_line, "bootloader=G925I"))
 	{
 		pr_alert("FOUND G925I VARIANT");
 		variant_aif_required = NO_AIF;
+		variant_edge = IS_EDGE;
 		model_type = VARDET_G925I;
 	}
 	else if (strstr(boot_command_line, "bootloader=G920S"))
 	{
 		pr_alert("FOUND G920S VARIANT");
 		variant_aif_required = NO_AIF;
+		variant_edge = NOT_EDGE;
 		model_type = VARDET_G920S;
 	}
 	else if (strstr(boot_command_line, "bootloader=G925S"))
 	{
 		pr_alert("FOUND G925S VARIANT");
 		variant_aif_required = NO_AIF;
+		variant_edge = IS_EDGE;
 		model_type = VARDET_G925S;
 	}
 	else if (strstr(boot_command_line, "bootloader=G920K"))
 	{
 		pr_alert("FOUND G920K VARIANT");
 		variant_aif_required = NO_AIF;
+		variant_edge = NOT_EDGE;
 		model_type = VARDET_G920K;
 	}
 	else if (strstr(boot_command_line, "bootloader=G925K"))
 	{
 		pr_alert("FOUND G925K VARIANT");
 		variant_aif_required = NO_AIF;
+		variant_edge = IS_EDGE;
 		model_type = VARDET_G925K;
 	}
 	else if (strstr(boot_command_line, "bootloader=G920L"))
 	{
 		pr_alert("FOUND G920L VARIANT");
 		variant_aif_required = NO_AIF;
+		variant_edge = NOT_EDGE;
 		model_type = VARDET_G920L;
 	}
 	else if (strstr(boot_command_line, "bootloader=G925L"))
 	{
 		pr_alert("FOUND G925L VARIANT");
 		variant_aif_required = NO_AIF;
+		variant_edge = IS_EDGE;
 		model_type = VARDET_G925L;
 	}
 
@@ -662,36 +673,42 @@ asmlinkage void __init start_kernel(void)
 	{
 		pr_alert("FOUND G920T VARIANT");
 		variant_aif_required = HAS_AIF;
+		variant_edge = NOT_EDGE;
 		model_type = VARDET_G920T;
 	}
 	else if (strstr(boot_command_line, "bootloader=G925T"))
 	{
 		pr_alert("FOUND G925T VARIANT");
 		variant_aif_required = HAS_AIF;
+		variant_edge = IS_EDGE;
 		model_type = VARDET_G925T;
 	}
 	else if (strstr(boot_command_line, "bootloader=G920W8"))
 	{
 		pr_alert("FOUND G920W8 VARIANT");
 		variant_aif_required = HAS_AIF;
+		variant_edge = NOT_EDGE;
 		model_type = VARDET_G920W8;
 	}
 	else if (strstr(boot_command_line, "bootloader=G925W8"))
 	{
 		pr_alert("FOUND G925W8 VARIANT");
 		variant_aif_required = HAS_AIF;
+		variant_edge = IS_EDGE;
 		model_type = VARDET_G925W8;
 	}
 	else if (strstr(boot_command_line, "bootloader=G920P"))
 	{
 		pr_alert("FOUND G920P VARIANT");
 		variant_aif_required = HAS_AIF;
+		variant_edge = NOT_EDGE;
 		model_type = VARDET_G920P;
 	}
 	else if (strstr(boot_command_line, "bootloader=G925P"))
 	{
 		pr_alert("FOUND G925P VARIANT");
 		variant_aif_required = HAS_AIF;
+		variant_edge = IS_EDGE;
 		model_type = VARDET_G925P;
 	}
 	else

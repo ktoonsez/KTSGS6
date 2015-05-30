@@ -25,6 +25,12 @@
 #define NO_AIF		0
 #define HAS_AIF		1
 
+
+/*Edge or Not*/
+#define IS_EDGE		1
+#define NOT_EDGE	0
+
 extern unsigned int model_type;
 extern unsigned int variant_aif_required;
+extern unsigned int variant_edge;
 
