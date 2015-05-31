@@ -714,9 +714,8 @@ static void max77843_charger_function_control(
 				struct max77843_charger_data *charger)
 {
 	u8 chg_cnfg_00 = 0;
-	if (variant_edge == IS_EDGE){
-		u8 chg_cnfg_01 = 0;
-	}
+	u8 chg_cnfg_01 = 0;
+
 	union power_supply_propval value;
 	union power_supply_propval chg_mode;
 	union power_supply_propval swelling_state;
@@ -867,10 +866,9 @@ static void max77843_charger_function_control(
 			max77843_write_reg(charger->i2c, MAX77843_CHG_REG_CNFG_01,
 					   chg_cnfg_01);
 		}
+		pr_info("%s : CNFG01(0x%02x)\n", __func__, chg_cnfg_01);
 	}
 
-	pr_info("%s : CNFG01(0x%02x)\n", __func__, chg_cnfg_01);
-#endif
 	pr_info("charging = %d, fc = %d, il = %d, t1 = %d, t2 = %d, cable = %d\n",
 		charger->is_charging,
 		charger->charging_current,
