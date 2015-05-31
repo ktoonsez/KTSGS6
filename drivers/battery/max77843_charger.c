@@ -20,6 +20,8 @@
 #include <linux/usb_notify.h>
 #endif
 
+#include <linux/variant_detection.h>
+
 #define ENABLE 1
 #define DISABLE 0
 
@@ -712,9 +714,9 @@ static void max77843_charger_function_control(
 				struct max77843_charger_data *charger)
 {
 	u8 chg_cnfg_00 = 0;
-#if !defined(CONFIG_FIX_CHG_FQ_4MHZ)
-	u8 chg_cnfg_01 = 0;
-#endif
+	if (variant_edge == IS_EDGE){
+		u8 chg_cnfg_01 = 0;
+	}
 	union power_supply_propval value;
 	union power_supply_propval chg_mode;
 	union power_supply_propval swelling_state;
@@ -846,24 +848,25 @@ static void max77843_charger_function_control(
 
 	max77843_set_charger_state(charger, charger->is_charging);
 
-#if defined(CONFIG_FIX_CHG_FQ_4MHZ)
-	max77843_update_reg(charger->i2c, MAX77843_CHG_REG_CNFG_01,
-		0, MAX77843_CHG_FQ_2MHz);
-#else
-	max77843_read_reg(charger->i2c, MAX77843_CHG_REG_CNFG_01, &chg_cnfg_01);
+	if (variant_edge == IS_EDGE) {
+		max77843_update_reg(charger->i2c, MAX77843_CHG_REG_CNFG_01,
+			0, MAX77843_CHG_FQ_2MHz);
+	} else {
+		max77843_read_reg(charger->i2c, MAX77843_CHG_REG_CNFG_01, &chg_cnfg_01);
 
-	if (((charger->cable_type == POWER_SUPPLY_TYPE_HV_MAINS) ||
-	     (charger->cable_type == POWER_SUPPLY_TYPE_HV_ERR)) &&
-	    !(chg_cnfg_01 & 0x08)) {
-		chg_cnfg_01 |= MAX77843_CHG_FQ_2MHz;
-		max77843_write_reg(charger->i2c, MAX77843_CHG_REG_CNFG_01,
-				   chg_cnfg_01);
-	} else if (((charger->cable_type != POWER_SUPPLY_TYPE_HV_MAINS) &&
-		    (charger->cable_type != POWER_SUPPLY_TYPE_HV_ERR)) &&
-		   (chg_cnfg_01 & 0x08)) {
-		chg_cnfg_01 &= ~(MAX77843_CHG_FQ_2MHz);
-		max77843_write_reg(charger->i2c, MAX77843_CHG_REG_CNFG_01,
-				   chg_cnfg_01);
+		if (((charger->cable_type == POWER_SUPPLY_TYPE_HV_MAINS) ||
+		     (charger->cable_type == POWER_SUPPLY_TYPE_HV_ERR)) &&
+		    !(chg_cnfg_01 & 0x08)) {
+			chg_cnfg_01 |= MAX77843_CHG_FQ_2MHz;
+			max77843_write_reg(charger->i2c, MAX77843_CHG_REG_CNFG_01,
+					   chg_cnfg_01);
+		} else if (((charger->cable_type != POWER_SUPPLY_TYPE_HV_MAINS) &&
+			    (charger->cable_type != POWER_SUPPLY_TYPE_HV_ERR)) &&
+			   (chg_cnfg_01 & 0x08)) {
+			chg_cnfg_01 &= ~(MAX77843_CHG_FQ_2MHz);
+			max77843_write_reg(charger->i2c, MAX77843_CHG_REG_CNFG_01,
+					   chg_cnfg_01);
+		}
 	}
 
 	pr_info("%s : CNFG01(0x%02x)\n", __func__, chg_cnfg_01);
