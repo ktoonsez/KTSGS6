@@ -17,6 +17,7 @@
 #include <linux/of_gpio.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
+#include <linux/variant_detection.h>
 
 bool max77843_fg_fuelalert_init(struct max77843_fuelgauge_data *fuelgauge, int soc);
 
@@ -2081,9 +2082,13 @@ static int max77843_fuelgauge_parse_dt(struct max77843_fuelgauge_data *fuelgauge
 			pr_err("%s error reading fullsocthr_2nd %d\n",
 					__func__, ret);
 #endif
-
-		ret = of_property_read_u32(np, "fuelgauge,capacity",
+		if (variant_edge == IS_EDGE) {
+			ret = of_property_read_u32(np, "fuelgauge,capacity_E",
 					   &fuelgauge->battery_data->Capacity);
+		} else {
+			ret = of_property_read_u32(np, "fuelgauge,capacity",
+					   &fuelgauge->battery_data->Capacity);
+		}
 		if (ret < 0)
 			pr_err("%s error reading capacity_calculation_type %d\n",
 					__func__, ret);

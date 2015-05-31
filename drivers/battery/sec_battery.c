@@ -10,6 +10,7 @@
  * published by the Free Software Foundation.
  */
 #include <linux/battery/sec_battery.h>
+#include <linux/variant_detection.h>
 
 const char *charger_chip_name;
 
@@ -4695,10 +4696,14 @@ static int sec_bat_parse_dt(struct device *dev,
 		&pdata->technology);
 	if (ret)
 		pr_info("%s : technology is Empty\n", __func__);
-
-	ret = of_property_read_u32(np,
+	
+	if (variant_edge == IS_EDGE) {
+		ret = of_property_read_u32(np,
+		"battery,wireless_cc_cv_E", &pdata->wireless_cc_cv);
+	} else {
+		ret = of_property_read_u32(np,
 		"battery,wireless_cc_cv", &pdata->wireless_cc_cv);
-
+	}
 	pdata->fake_capacity = of_property_read_bool(np,
 						     "battery,fake_capacity");
 
@@ -4870,7 +4875,11 @@ static int sec_bat_parse_dt(struct device *dev,
 		pr_info("%s : inbat_voltage is Empty\n", __func__);
 
 	if (pdata->inbat_voltage) {
-		p = of_get_property(np, "battery,inbat_voltage_table_adc", &len);
+		if (variant_edge == IS_EDGE) {
+			p = of_get_property(np, "battery,inbat_voltage_table_adc_E", &len);
+		} else {
+			p = of_get_property(np, "battery,inbat_voltage_table_adc", &len);
+		}
 		if (!p)
 			return 1;
 
@@ -4883,8 +4892,13 @@ static int sec_bat_parse_dt(struct device *dev,
 					pdata->inbat_adc_table_size, GFP_KERNEL);
 
 		for(i = 0; i < pdata->inbat_adc_table_size; i++) {
-			ret = of_property_read_u32_index(np,
+			if (variant_edge == IS_EDGE) {
+				ret = of_property_read_u32_index(np,
+							 "battery,inbat_voltage_table_adc_E", i, &temp);
+			} else {
+				ret = of_property_read_u32_index(np,
 							 "battery,inbat_voltage_table_adc", i, &temp);
+			}
 			pdata->inbat_adc_table[i].adc = (int)temp;
 			if (ret)
 				pr_info("%s : inbat_adc_table(adc) is Empty\n",
