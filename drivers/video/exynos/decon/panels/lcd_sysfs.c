@@ -14,14 +14,23 @@
 
 #include "../dsim.h"
 #include "dsim_panel.h"
-#include "panel_info.h"
+//#include "panel_info.h"
+#include "s6e3hf2_wqhd_param.h"
+#ifdef CONFIG_PANEL_AID_DIMMING
+#include "aid_dimming.h"
+#endif
+
 #include "dsim_backlight.h"
+#include <linux/variant_detection.h>
 
 #if defined(CONFIG_SEC_FACTORY) && defined(CONFIG_EXYNOS_DECON_LCD_MCD)
 void mcd_mode_set(struct dsim_device *dsim)
 {
 	int i = 0;
 	struct panel_private *panel = &dsim->priv;
+	if (variant_edge == NOT_EDGE)
+		return 0;
+		
 	dsim_write_hl_data(dsim, SEQ_TEST_KEY_ON_F0, ARRAY_SIZE(SEQ_TEST_KEY_ON_F0));
 	dsim_write_hl_data(dsim, SEQ_TEST_KEY_ON_F1, ARRAY_SIZE(SEQ_TEST_KEY_ON_F1));
 	dsim_write_hl_data(dsim, SEQ_TEST_KEY_ON_FC, ARRAY_SIZE(SEQ_TEST_KEY_ON_FC));
@@ -52,6 +61,8 @@ static ssize_t mcd_mode_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct panel_private *priv = dev_get_drvdata(dev);
+	if (variant_edge == NOT_EDGE)
+		return strlen(buf);
 
 	sprintf(buf, "%u\n", priv->mcd_on);
 
@@ -65,7 +76,9 @@ static ssize_t mcd_mode_store(struct device *dev,
 	struct panel_private *priv = dev_get_drvdata(dev);
 	int value;
 	int rc;
-
+	if (variant_edge == NOT_EDGE)
+		return size;
+		
 	dsim = container_of(priv, struct dsim_device, priv);
 
 	rc = kstrtouint(buf, (unsigned int)0, &value);
@@ -316,6 +329,8 @@ static ssize_t alpm_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct panel_private *priv = dev_get_drvdata(dev);
+	if (variant_edge == NOT_EDGE)
+		return strlen(buf);
 
 	sprintf(buf, "%d\n", priv->alpm);
 
@@ -334,7 +349,9 @@ static ssize_t alpm_store(struct device *dev,
 	struct dsim_device *dsim;
 	struct panel_private *priv = dev_get_drvdata(dev);
 	int value;
-
+	if (variant_edge == NOT_EDGE)
+		return size;
+		
 	dsim = container_of(priv, struct dsim_device, priv);
 
 	sscanf(buf, "%9d", &value);
@@ -788,9 +805,12 @@ void lcd_init_sysfs(struct dsim_device *dsim)
 		dev_err(&dsim->lcd->dev, "failed to add sysfs entries, %d\n", __LINE__);
 
 #if defined(CONFIG_SEC_FACTORY) && defined(CONFIG_EXYNOS_DECON_LCD_MCD)
-	ret = device_create_file(&dsim->lcd->dev, &dev_attr_mcd_mode);
-	if (ret < 0)
-		dev_err(&dsim->lcd->dev, "failed to add sysfs entries, %d\n", __LINE__);
+	if (variant_edge == IS_EDGE)
+	{
+		ret = device_create_file(&dsim->lcd->dev, &dev_attr_mcd_mode);
+		if (ret < 0)
+			dev_err(&dsim->lcd->dev, "failed to add sysfs entries, %d\n", __LINE__);
+	}
 #endif
 
 #ifdef CONFIG_LCD_HMT
@@ -805,9 +825,12 @@ void lcd_init_sysfs(struct dsim_device *dsim)
 #endif
 
 #ifdef CONFIG_LCD_ALPM
-	ret = device_create_file(&dsim->lcd->dev, &dev_attr_alpm);
-	if (ret < 0)
-		dev_err(&dsim->lcd->dev, "failed to add sysfs entries, %d\n", __LINE__);
+	if (variant_edge == IS_EDGE)
+	{
+		ret = device_create_file(&dsim->lcd->dev, &dev_attr_alpm);
+		if (ret < 0)
+			dev_err(&dsim->lcd->dev, "failed to add sysfs entries, %d\n", __LINE__);
+	}
 #endif
 	ret = device_create_file(&dsim->priv.bd->dev ,&dev_attr_weakness_hbm_comp);
 	if (ret < 0)
