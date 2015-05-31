@@ -324,7 +324,7 @@ void report_sig_motion_data(struct ssp_data *data,
 		data->buf[SIG_MOTION_SENSOR].sig_motion);
 	input_sync(data->sig_motion_input_dev);
 
-	//wake_lock_timeout(&data->ssp_wake_lock, 3 * HZ);
+	wake_lock_timeout(&data->ssp_wake_lock, 3 * HZ);
 }
 
 void report_rot_data(struct ssp_data *data, struct sensor_value *rotdata)
