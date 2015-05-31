@@ -11,10 +11,10 @@
 
 /dts-v1/;
 #include "exynos7420-zero_common.dtsi"
-#include "exynos7420-zerolte_battery_06_925f.dtsi"
+#include "exynos7420-zerolte_battery_06.dtsi"
 #include "exynos7420-zerolte_gpio_08.dtsi"
 #include "exynos7420-zerolte_modem-shannon.dtsi"
-#include "exynos7420-zerolte_fingerprint-sensor_00_925f.dtsi"
+#include "exynos7420-zerolte_fingerprint-sensor_00.dtsi"
 #include "exynos7420-zerolte_mst.dtsi"
 / {
 	model = "Samsung ZERO LTE EUR rev07 board based on Exynos7420(EVT1), mPOP";

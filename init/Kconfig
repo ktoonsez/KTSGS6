@@ -98,6 +98,12 @@ config HAVE_KERNEL_XZ
 config HAVE_KERNEL_LZO
 	bool
 
+config CHECK_AIF
+    bool "Add runtime checks for aif_format register from dtb blob"
+    help
+	Add run-time checks to the kernel to determine if device requires the aif_format register
+	passed from dtb blob to the arizona sound framework (for in-call audio)
+
 choice
 	prompt "Kernel compression mode"
 	default KERNEL_GZIP

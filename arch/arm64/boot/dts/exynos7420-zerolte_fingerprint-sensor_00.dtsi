@@ -67,6 +67,7 @@
 		/delete-property/ dma-mode;
 		/delete-property/ dmas;
 		/delete-property/ dma-names;
+		secure-mode;
 		#address-cells = <1>;
 		#size-cells = <0>;
 		pinctrl-names = "default";
