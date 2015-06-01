@@ -82,12 +82,15 @@ static int dsim_panel_early_probe(struct dsim_device *dsim)
 {
 	int ret = 0;
 	struct panel_private *panel = &dsim->priv;
-	
+
+#if defined(CONFIG_PANEL_S6E3HA2_DYNAMIC) && defined(CONFIG_PANEL_S6E3HF2_DYNAMIC)
 	if (variant_edge == IS_EDGE)
 		panel->ops = dsim_panel_get_priv_ops_edge(dsim);
 	else
 		panel->ops = dsim_panel_get_priv_ops(dsim);
-
+#else
+	panel->ops = dsim_panel_get_priv_ops(dsim);
+#endif
 	if (panel->ops->early_probe) {
 		ret = panel->ops->early_probe(dsim);
 	}

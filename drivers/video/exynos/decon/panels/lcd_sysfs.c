@@ -23,6 +23,13 @@
 #include "dsim_backlight.h"
 #include <linux/variant_detection.h>
 
+#if !(defined(CONFIG_PANEL_S6E3HA2_DYNAMIC) && defined(CONFIG_PANEL_S6E3HF2_DYNAMIC))
+static const unsigned char SEQ_HMT_OFF2[] = {	/* porch */
+	0xF3,
+	0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+};
+#endif
+
 #if defined(CONFIG_SEC_FACTORY) && defined(CONFIG_EXYNOS_DECON_LCD_MCD)
 void mcd_mode_set(struct dsim_device *dsim)
 {

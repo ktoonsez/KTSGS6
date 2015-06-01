@@ -22,7 +22,9 @@ int dsim_panel_ops_init(struct dsim_device *dsim);
 
 /* dsim_panel_get_priv_ops() this function comes from XXXX_mipi_lcd.c */
 struct dsim_panel_ops *dsim_panel_get_priv_ops(struct dsim_device *dsim);
+#if defined(CONFIG_PANEL_S6E3HA2_DYNAMIC) && defined(CONFIG_PANEL_S6E3HF2_DYNAMIC)
 struct dsim_panel_ops *dsim_panel_get_priv_ops_edge(struct dsim_device *dsim);
+#endif
 
 /*lcd_init_sysfs() this function comes from lcd_sysfs.c */
 #if defined(CONFIG_EXYNOS_DECON_LCD_SYSFS)
