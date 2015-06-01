@@ -12,8 +12,8 @@
 /dts-v1/;
 #include "exynos7420-zero_common.dtsi"
 #include "G92X_universal_battery.dtsi"
-#include "exynos7420-zeroflte_gpio_usa_05.dtsi"
-#include "exynos7420-zerolte_modem-shannon.dtsi"
+#include "G92X_universal_gpio.dtsi"
+#include "G92X_universal_modem-shannon_ds.dtsi"
 #include "exynos7420-zerolte_fingerprint-sensor_00.dtsi"
 #include "exynos7420-zerolte_mst.dtsi"
 #include "exynos7420-zeroflte_motor.dtsi"
