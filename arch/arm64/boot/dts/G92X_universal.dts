@@ -616,8 +616,8 @@
 					regulator-name = "VDD22_1P1_2MIC";
 					regulator-min-microvolt = <1100000>;
 					regulator-max-microvolt = <1100000>;
-					/* regulator-always-on; */
-					/* regulator-initial-mode = <3>; */
+					regulator-always-on;
+					regulator-initial-mode = <3>;
 				};
 
 				ldo23_reg: LDO23 {
