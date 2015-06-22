@@ -5520,10 +5520,9 @@ int es705_core_init(struct device *dev)
 {
 	struct esxxx_platform_data *pdata = dev->platform_data;
 	int rc = 0;
-	#ifdef CONFIG_CHECK_AIF
 	if (variant_aif_required == NO_AIF)
 		return rc;
-	#endif
+
 	if (pdata == NULL) {
 		dev_err(dev, "%s(): pdata is NULL", __func__);
 		rc = -EIO;

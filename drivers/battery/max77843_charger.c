@@ -16,11 +16,10 @@
 #include <linux/seq_file.h>
 #include <linux/power_supply.h>
 #include <linux/mfd/max77843.h>
+#include <linux/variant_detection.h>
 #ifdef CONFIG_USB_HOST_NOTIFY
 #include <linux/usb_notify.h>
 #endif
-
-#include <linux/variant_detection.h>
 
 #define ENABLE 1
 #define DISABLE 0

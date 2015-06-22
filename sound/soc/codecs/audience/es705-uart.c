@@ -425,10 +425,8 @@ static int es705_uart_probe_thread(void *ptr)
 {
 	int rc = 0;
 	struct device *dev = (struct device *)ptr;
-	#ifdef CONFIG_CHECK_AIF
 	if (variant_aif_required == NO_AIF)
 		return rc;
-	#endif
 
 	rc = es705_uart_open(&es705_priv);
 	if (rc) {

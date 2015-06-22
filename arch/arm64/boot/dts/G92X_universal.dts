@@ -12,7 +12,7 @@
 /dts-v1/;
 #include "exynos7420-zero_common.dtsi"
 #include "G92X_universal_battery.dtsi"
-#include "exynos7420-zeroflte_gpio_usa_05.dtsi"
+#include "G92X_universal_gpio.dtsi"
 #include "exynos7420-zerolte_modem-shannon.dtsi"
 #include "exynos7420-zerolte_fingerprint-sensor_00.dtsi"
 #include "exynos7420-zerolte_mst.dtsi"
@@ -606,10 +606,9 @@
 				};
 
 				ldo21_reg: LDO21 {
-					regulator-name = "vtouch_3.3v";
+					regulator-name = "key_led";
 					regulator-min-microvolt = <3300000>;
 					regulator-max-microvolt = <3300000>;
-					regulator-boot-on;
 				};
 
 				ldo22_reg: LDO22 {
@@ -897,11 +896,9 @@
 		};
 	};
 
-
-
-
 	sec_thermistor@0 {
 		status = "okay";
+
 		adc_array = <202 212 223 234 244 255 265 276 287 297
 			307 317 327 337 348 359 369 380 390 400
 			410 425 440 455 470 486 501 517 532 547
@@ -918,6 +915,7 @@
 
 	sec_thermistor@1 {
 		status = "okay";
+
 		adc_array = <202 212 223 234 244 255 265 276 287 297
 			307 317 327 337 348 359 369 380 390 400
 			410 425 440 455 470 486 501 517 532 547
@@ -932,14 +930,12 @@
 			1912>;
 	};
 
-
 	hsi2c@14E10000 {
 		touchscreen@20 {
 			stm,firmware_name = "tsp_stm/stm_z1.fw";
 			stm,project_name = "ZEROF", "G920";
 			stm,num_touchkey = <2>;
 			stm,regulator_tk_led = "key_led";
-
 		};
 	};
 
@@ -976,6 +972,10 @@
 		mic = <1>;
 		mic_ver = <2>;
 		type_of_ddi = <0>;
+	};
+
+	simslot_count {
+		status = "okay";
 	};
 
 };
